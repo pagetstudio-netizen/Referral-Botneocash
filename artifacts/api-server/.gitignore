@@ -9,3 +9,7 @@ pnpm-debug.log*
 Thumbs.db
 dist/
 tmp/
+logs/
+src/
+build.mjs
+tsconfig.json

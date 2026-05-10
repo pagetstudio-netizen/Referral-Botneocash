@@ -47,3 +47,15 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Variables d'environnement (ne jamais committer)
+.env
+artifacts/api-server/.env
+
+# Logs PM2
+artifacts/api-server/logs/
+
+# Dossiers de build inutiles en prod
+artifacts/mockup-sandbox/
+lib/
+scripts/
