@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
-import { rm } from "node:fs/promises";
+import { rm, copyFile, mkdir } from "node:fs/promises";
 
 globalThis.require = createRequire(import.meta.url);
 
@@ -106,6 +106,25 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // Copy static assets needed at runtime
+  // schema.sql: connect.js reads join(__dirname, 'schema.sql')
+  // bundled __dirname = dist/, so it must be at dist/schema.sql
+  await copyFile(
+    path.resolve(artifactDir, "bot/database/schema.sql"),
+    path.resolve(distDir, "schema.sql")
+  );
+
+  // logo.png: start.js & withdrawal.js read join(__dirname, '../assets/logo.png')
+  // bundled __dirname = dist/, so logo must be at dist/../assets/ = api-server root assets/
+  const assetsDir = path.resolve(distDir, "../assets");
+  await mkdir(assetsDir, { recursive: true });
+  await copyFile(
+    path.resolve(artifactDir, "bot/assets/logo.png"),
+    path.resolve(assetsDir, "logo.png")
+  );
+
+  console.log("✅ Static assets copied (schema.sql, logo.png)");
 }
 
 buildAll().catch((err) => {
