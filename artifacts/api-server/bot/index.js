@@ -71,7 +71,7 @@ app.listen(PORT, () => {
   logger.info(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
 });
 
-// ─── Démarrage asynchrone bot + MongoDB ────────────────────────────────────────
+// ─── Démarrage asynchrone bot + Supabase ───────────────────────────────────────
 async function startBot() {
   const missingVars = [];
   if (!process.env.BOT_TOKEN) missingVars.push('BOT_TOKEN');

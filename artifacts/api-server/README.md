@@ -23,7 +23,7 @@ Dans **Plesk → Node.js → Environment Variables**, ajoute :
 | Variable | Description | Exemple |
 |----------|-------------|---------|
 | `BOT_TOKEN` | Token du bot (@BotFather) | `7123456789:AAH...` |
-| `MONGODB_URI` | URI MongoDB Atlas | `mongodb+srv://user:pass@cluster.mongodb.net/neocash` |
+| `SUPABASE_DB_URL` | URL de connexion PostgreSQL Supabase | `postgresql://postgres.xxx:password@aws-x.pooler.supabase.com:6543/postgres` |
 | `ADMIN_IDS` | Ton ID Telegram (via @userinfobot) | `123456789` |
 
 ### Variables optionnelles
@@ -31,6 +31,7 @@ Dans **Plesk → Node.js → Environment Variables**, ajoute :
 | Variable | Description | Défaut |
 |----------|-------------|--------|
 | `ADMIN_GROUP_ID` | ID groupe admin Telegram | — |
+| `WITHDRAWAL_CHANNEL` | Canal de publication des retraits | — |
 | `REFERRAL_BONUS` | Bonus parrainage FCFA | `120` |
 | `DAILY_BONUS` | Bonus quotidien FCFA | `100` |
 | `MIN_WITHDRAW` | Retrait minimum FCFA | `800` |
@@ -39,6 +40,7 @@ Dans **Plesk → Node.js → Environment Variables**, ajoute :
 | `LOG_LEVEL` | Niveau de log | `info` |
 
 > 💡 Tu peux aussi créer un fichier `.env` à la racine de `artifacts/api-server/` en copiant `.env.example`.
+> ⚠️ Ne jamais nommer la variable `DATABASE_URL` — ce nom est réservé par certains hébergeurs.
 
 ---
 
@@ -48,14 +50,15 @@ Dans **Plesk → Node.js → Environment Variables**, ajoute :
 
 1. **Connecter** le repo GitHub dans Plesk (Git → Add Repository)
 2. **Configurer** le Document Root sur `artifacts/api-server`
-3. **Ajouter** les variables d'environnement (BOT_TOKEN, MONGODB_URI, ADMIN_IDS)
+3. **Ajouter** les variables d'environnement (BOT_TOKEN, SUPABASE_DB_URL, ADMIN_IDS)
 4. Cliquer **NPM Install** dans Plesk
 5. Cliquer **Run** (ou **Restart**)
 
 ### Mise à jour (Pull + Deploy + Restart)
 
-1. Cliquer **Pull** dans Plesk (ou **Deploy Now**)
-2. Cliquer **Restart**
+1. Pousser les changements sur GitHub
+2. Cliquer **Pull** dans Plesk (ou **Deploy Now**)
+3. Cliquer **Restart**
 
 > ✅ Pas besoin de relancer NPM Install à chaque mise à jour, sauf si `package.json` change.
 
@@ -70,15 +73,20 @@ artifacts/api-server/
 │   ├── bot.js            ← Configuration Telegraf
 │   ├── commands/         ← /start, /admin
 │   ├── handlers/         ← balance, bonus, retrait, support...
-│   ├── models/           ← MongoDB schemas
+│   ├── models/           ← Modèles PostgreSQL (pg)
 │   ├── middleware/        ← auth, admin, anti-spam
 │   ├── utils/            ← keyboards, messages, notify...
-│   ├── database/         ← Connexion MongoDB
+│   ├── database/         ← Connexion Supabase PostgreSQL
+│   │   ├── connect.js    ← Connexion + initialisation schéma
+│   │   ├── db.js         ← Pool pg (queryOne, queryAll, queryScalar)
+│   │   └── schema.sql    ← Schéma PostgreSQL (auto-exécuté au démarrage)
 │   └── assets/
-│       └── logo.png      ← Logo affiché au /start
+│       └── logo.png      ← Logo affiché dans les notifications
+├── ecosystem.config.cjs  ← Config PM2 pour Plesk
 ├── .env.example          ← Modèle des variables d'environnement
+├── .nvmrc                ← Version Node.js requise (20)
 ├── package.json          ← Dépendances npm
-├── package-lock.json     ← Verrou des versions (généré)
+├── package-lock.json     ← Verrou des versions
 └── README.md             ← Ce fichier
 ```
 
@@ -86,7 +94,7 @@ artifacts/api-server/
 
 ## 🛡 Prérequis
 
-- **MongoDB Atlas** : Créer un cluster gratuit sur [mongodb.com/atlas](https://www.mongodb.com/atlas) et récupérer l'URI de connexion
+- **Supabase** : Créer un projet sur [supabase.com](https://supabase.com), récupérer l'URL de connexion PostgreSQL (Settings → Database → Connection string → URI). ⚠️ Utiliser le **Transaction pooler** (port 6543), pas le Direct connection.
 - **Bot Telegram** : Créer le bot via [@BotFather](https://t.me/BotFather) et récupérer le token
 - **ID Telegram admin** : Obtenir via [@userinfobot](https://t.me/userinfobot)
 
@@ -96,7 +104,7 @@ artifacts/api-server/
 
 Une fois démarré, le bot expose :
 
-- `GET /api/health` — Statut du bot et de la connexion MongoDB
+- `GET /api/health` — Statut du bot et de la connexion Supabase
 - `GET /api/stats` — Nombre d'utilisateurs et retraits en attente
 
 ---
@@ -110,5 +118,6 @@ Une fois démarré, le bot expose :
 | 💸 Retrait Mobile Money | Min 800 FCFA, 10 pays africains |
 | 🛡 Panel admin Telegram | Stats, gestion users, diffusion, paramètres |
 | 📢 Canal obligatoire | Vérification avant chaque action |
-| 📣 Canal de retrait | Notifications publiques automatiques |
+| 📣 Canal de retrait | Notifications publiques avec logo + masquage |
 | 📞 Support personnalisé | Lien + message configurables par l'admin |
+| 🚧 Mode maintenance | Activable depuis le panel admin |
