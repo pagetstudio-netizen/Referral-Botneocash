@@ -32,17 +32,12 @@ export async function notifyAdmins(telegram, { text, extra = {} }) {
 }
 
 /**
- * Envoyer une notification dans le canal de retrait public
- * @param {Object} telegram - Instance telegram
- * @param {string} text - Message à envoyer
- * @param {Object} extra - Options supplémentaires (photo, boutons, etc.)
+ * Envoyer une notification dans le canal de retrait public (texte simple)
  */
 export async function notifyWithdrawalChannel(telegram, text, extra = {}) {
   try {
-    const { getSetting } = await import('../models/Settings.js');
     const channelId = await getSetting('withdrawal_channel');
     if (!channelId) return;
-
     await telegram.sendMessage(channelId, text, {
       parse_mode: 'Markdown',
       ...extra,
@@ -51,6 +46,29 @@ export async function notifyWithdrawalChannel(telegram, text, extra = {}) {
     );
   } catch (err) {
     logger.error('notifyWithdrawalChannel error', { err: err.message });
+  }
+}
+
+/**
+ * Envoyer une notification avec photo dans le canal de retrait
+ * @param {Object} telegram - Instance telegram
+ * @param {import('stream').ReadStream|string} photo - Flux ou file_id de la photo
+ * @param {string} caption - Légende (texte Markdown)
+ * @param {Object} extra - Options supplémentaires (boutons, etc.)
+ */
+export async function notifyWithdrawalChannelPhoto(telegram, photo, caption, extra = {}) {
+  try {
+    const channelId = await getSetting('withdrawal_channel');
+    if (!channelId) return;
+    await telegram.sendPhoto(channelId, photo, {
+      caption,
+      parse_mode: 'Markdown',
+      ...extra,
+    }).catch((err) =>
+      logger.warn('notifyWithdrawalChannelPhoto send failed', { channelId, err: err.message })
+    );
+  } catch (err) {
+    logger.error('notifyWithdrawalChannelPhoto error', { err: err.message });
   }
 }
 

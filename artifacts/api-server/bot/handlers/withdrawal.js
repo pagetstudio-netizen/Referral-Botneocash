@@ -14,8 +14,30 @@ import {
   withdrawalAdminKeyboard,
   mainKeyboard,
 } from '../utils/keyboards.js';
-import { notifyAdmins, notifyUser, notifyWithdrawalChannel } from '../utils/notify.js';
+import { createReadStream } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { notifyAdmins, notifyUser, notifyWithdrawalChannel, notifyWithdrawalChannelPhoto } from '../utils/notify.js';
 import logger from '../utils/logger.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const LOGO_PATH = join(__dirname, '../assets/logo.png');
+
+// Masque le numéro : +22507123456 → +225 07 XX XX 56
+function maskPhone(phone) {
+  const clean = phone.replace(/\s/g, '');
+  if (clean.length < 6) return clean;
+  const visible_start = clean.slice(0, Math.min(6, clean.length - 2));
+  const visible_end   = clean.slice(-2);
+  const hidden_count  = clean.length - visible_start.length - visible_end.length;
+  const hidden        = 'X'.repeat(hidden_count);
+  // Reformater en groupes de 2 : +225 07 XX XX XX 56
+  const all = visible_start + hidden + visible_end;
+  const prefix = all.startsWith('+') ? '+' : '';
+  const digits = all.replace('+', '');
+  const groups = digits.match(/.{1,2}/g) || [digits];
+  return prefix + groups.join(' ');
+}
 
 // Sessions en mémoire pour le flux multi-étapes
 const withdrawalSessions = new Map();
@@ -176,25 +198,25 @@ export async function handleConfirmWithdrawal(ctx) {
     // ─── Notification canal de retrait (demande en attente) ────────────────────
     const botInfo = await ctx.telegram.getMe();
     const botLink = `https://t.me/${botInfo.username}`;
-    const channelPendingText =
-      `⏳ *DEMANDE DE RETRAIT EN COURS*\n\n` +
-      `━━━━━━━━━━━━━━━━\n` +
-      `👤 Bénéficiaire : *${user.firstName} ${user.lastName || ''}*\n` +
-      `🌍 Pays : ${session.countryName}\n` +
-      `📱 Opérateur : *${session.operator}*\n` +
+    const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const pendingCaption =
+      `⏳ *RETRAIT EN COURS*\n\n` +
+      `🔍 Statut : *En attente* ⏳\n` +
+      `👤 Bénéficiaire : *${user.firstName}*\n` +
       `💰 Montant : *${formatAmount(session.amount)}*\n` +
-      `📞 Numéro : \`${session.phone}\`\n` +
-      `📅 Date : ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}\n` +
-      `━━━━━━━━━━━━━━━━\n` +
-      `🔄 Statut : *EN ATTENTE* ⏳\n\n` +
+      `📱 Opérateur : *${session.operator}*\n` +
+      `📞 Numéro : \`${maskPhone(session.phone)}\`\n` +
+      `📅 Date : ${now}\n\n` +
       `💬 _Toi aussi tu peux gagner !_\n` +
       `👉 Lien bot`;
 
-    await notifyWithdrawalChannel(ctx.telegram, channelPendingText, {
-      reply_markup: {
-        inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]],
-      },
-    });
+    await notifyWithdrawalChannelPhoto(
+      ctx.telegram,
+      { source: createReadStream(LOGO_PATH) },
+      pendingCaption,
+      { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+    );
 
     logger.info('Withdrawal created', { userId, amount: session.amount, wdId: wd._id });
   } catch (err) {
@@ -294,29 +316,23 @@ export async function adminApproveWithdrawal(ctx, withdrawalId) {
         day: '2-digit', month: '2-digit', year: 'numeric',
       });
 
-      // Trouver le prénom du bénéficiaire
-      const User = (await import('../models/User.js')).default;
-      const beneficiary = await User.findOne({ telegramId: wd.telegramId });
-      const firstName = beneficiary?.firstName || wd.firstName || 'Utilisateur';
-
-      const channelApprovedText =
+      const approvedCaption =
         `✅ *PAIEMENT EFFECTUÉ*\n\n` +
-        `━━━━━━━━━━━━━━━━\n` +
-        `🔍 Statut : *Payé* ✅\n` +
-        `👤 Bénéficiaire : *${firstName}*\n` +
+        `🔍 Statut : Payé ✅\n` +
+        `👤 Bénéficiaire : *${wd.firstName}*\n` +
         `💰 Montant : *${formatAmount(wd.amount)}*\n` +
         `📱 Opérateur : *${wd.operator}*\n` +
-        `📞 Numéro : \`${wd.phone}\`\n` +
-        `📅 Date : ${now}\n` +
-        `━━━━━━━━━━━━━━━━\n\n` +
+        `📞 Numéro : \`${maskPhone(wd.phone)}\`\n` +
+        `📅 Date : ${now}\n\n` +
         `💬 _Toi aussi tu peux gagner !_\n` +
         `👉 Lien bot`;
 
-      await notifyWithdrawalChannel(ctx.telegram, channelApprovedText, {
-        reply_markup: {
-          inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]],
-        },
-      });
+      await notifyWithdrawalChannelPhoto(
+        ctx.telegram,
+        { source: createReadStream(LOGO_PATH) },
+        approvedCaption,
+        { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+      );
     } catch (channelErr) {
       logger.warn('Canal retrait notif failed', { err: channelErr.message });
     }
