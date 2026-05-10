@@ -26,20 +26,32 @@ export function formatDuration(ms) {
 
 // ─── Message de bienvenue ─────────────────────────────────────────────────────
 export async function welcomeMessage(firstName) {
-  const botName = await getSetting('bot_name') || 'NeoCash';
-  const dailyBonus = await getSetting('daily_bonus') || 100;
+  const dailyBonus  = await getSetting('daily_bonus')    || 100;
   const referralBonus = await getSetting('referral_bonus') || 120;
-  return `🎉 *Bienvenue sur ${botName} !*
+  const channel     = await getSetting('required_channel') || '';
+  const minWithdraw = await getSetting('min_withdraw')   || 800;
 
-💸 Gagnez de l'argent facilement grâce au parrainage et aux bonus quotidiens.
+  const channelLine = channel
+    ? `\n\n📢 *Pour commencer, rejoins notre canal officiel :*\n👉 ${channel}`
+    : '';
 
-👥 *${referralBonus} FCFA* par ami invité
-🎁 *${dailyBonus} FCFA* bonus quotidien
+  return `👋 *Bonjour ${firstName}, bienvenue chez NeoCash !* 🎉
 
-💳 Retraits disponibles via :
-MTN • Moov • Orange Money • TMoney • Wave et autres
+━━━━━━━━━━━━━━━━━━
+💸 *Tu peux gagner de l'argent réellement* en partageant simplement ton lien de parrainage avec tes amis et ta famille !
 
-Invitez vos amis et augmentez vos revenus directement depuis Telegram.`;
+🔥 *Comment gagner :*
+👥 *+${referralBonus} FCFA* par ami invité via ton lien
+🎁 *+${dailyBonus} FCFA* bonus gratuit chaque jour
+
+💳 *Retraits disponibles via :*
+Moov Money • MTN MoMo • Orange Money
+Wave • TMoney • Airtel Money • Free Money
+
+💰 Retrait à partir de *${formatAmount(minWithdraw)}* seulement
+━━━━━━━━━━━━━━━━━━${channelLine}
+
+🚀 *C'est gratuit, sans dépôt — commence maintenant !*`;
 }
 
 // ─── Message solde ─────────────────────────────────────────────────────────────
