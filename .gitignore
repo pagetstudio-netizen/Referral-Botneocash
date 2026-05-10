@@ -8,6 +8,11 @@ out-tsc
 .expo
 .expo-shared
 
+# Exception : le dashboard admin est pré-construit et commité pour Plesk
+# (Plesk n'a pas besoin de pnpm — il sert directement ces fichiers statiques)
+!artifacts/admin-dashboard/dist/
+!artifacts/admin-dashboard/dist/**
+
 # dependencies
 node_modules
 
@@ -42,7 +47,7 @@ testem.log
 Thumbs.db
 
 .cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
+.github/instructions/nx.instructions.json
 
 # Replit
 .cache/
@@ -55,7 +60,7 @@ artifacts/api-server/.env
 # Logs PM2
 artifacts/api-server/logs/
 
-# Dossiers de build inutiles en prod
+# Dossiers inutiles en prod
 artifacts/mockup-sandbox/
 scripts/
 

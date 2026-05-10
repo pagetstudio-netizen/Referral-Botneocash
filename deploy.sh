@@ -1,64 +1,57 @@
 #!/bin/bash
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # NeoCash Bot — Script de déploiement Plesk
-# Exécuté automatiquement après git pull
 #
-# Sur Plesk : Git → Déploiement → script de déploiement
-# Renseigne le chemin de ce fichier : ./deploy.sh
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Sur Plesk → Git → "Script de déploiement" → ./deploy.sh
+#
+# Ce script s'exécute automatiquement après chaque "Deploy Now".
+# Le dashboard admin est pré-construit dans git → aucun build requis.
+# Seul npm est nécessaire — aucun pnpm requis sur le serveur.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 set -e
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 API_DIR="$ROOT_DIR/artifacts/api-server"
-DASHBOARD_DIR="$ROOT_DIR/artifacts/admin-dashboard"
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  NeoCash Bot — Déploiement Plesk"
-echo "  Racine : $ROOT_DIR"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  NeoCash — Déploiement Plesk"
+echo "  Répertoire : $ROOT_DIR"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# ─── 1. Installer pnpm si absent ───────────────────────────────────────────────
-if ! command -v pnpm &> /dev/null; then
-  echo "📦 Installation de pnpm..."
-  npm install -g pnpm@latest
-fi
-echo "✔ pnpm $(pnpm --version)"
-
-# ─── 2. Installer toutes les dépendances du workspace ─────────────────────────
+# ─── 1. Dépendances du bot ─────────────────────────────────────────────────────
 echo ""
 echo "📦 Installation des dépendances..."
-cd "$ROOT_DIR"
-pnpm install --frozen-lockfile
+cd "$API_DIR"
+npm install --omit=dev --no-audit --no-fund --ignore-scripts
+echo "✔ Dépendances installées"
 
-# ─── 3. Build du tableau de bord admin ────────────────────────────────────────
-echo ""
-echo "🔨 Build du tableau de bord admin..."
-cd "$DASHBOARD_DIR"
-BASE_PATH=/admin PORT=3000 pnpm run build
-echo "✔ Admin dashboard → artifacts/admin-dashboard/dist/public/"
-
-# ─── 4. Créer le dossier logs ─────────────────────────────────────────────────
+# ─── 2. Dossier logs ───────────────────────────────────────────────────────────
 mkdir -p "$API_DIR/logs"
 
-# ─── 5. Redémarrer via PM2 ────────────────────────────────────────────────────
+# ─── 3. Démarrage / redémarrage ────────────────────────────────────────────────
 echo ""
-echo "🔄 Redémarrage de l'application via PM2..."
-cd "$API_DIR"
+echo "🔄 Gestion du processus..."
 
-if pm2 list | grep -q "neocash-bot"; then
-  pm2 restart neocash-bot --update-env
+if command -v pm2 &>/dev/null; then
+  echo "   → PM2 détecté"
+  cd "$API_DIR"
+  if pm2 list 2>/dev/null | grep -q "neocash-bot"; then
+    pm2 restart neocash-bot --update-env
+    echo "✔ PM2 : application redémarrée"
+  else
+    pm2 start ecosystem.config.cjs --env production
+    pm2 save --force
+    echo "✔ PM2 : application démarrée"
+  fi
 else
-  pm2 start ecosystem.config.cjs --env production
-  pm2 save
+  echo "   → PM2 non trouvé : Plesk gérera le redémarrage."
+  echo "   → Clique sur 'Restart' dans le panneau Node.js Plesk."
 fi
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Déploiement terminé !"
-echo ""
-echo "   Bot + API  → http://localhost:5000/api/health"
-echo "   Dashboard  → http://localhost:5000/admin"
-echo ""
-echo "   Statut PM2 : pm2 status neocash-bot"
-echo "   Logs PM2   : pm2 logs neocash-bot"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "   Santé API  : /api/health"
+echo "   Dashboard  : /admin"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
