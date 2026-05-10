@@ -124,6 +124,32 @@ export const backToAdminKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('◀️ Retour au panel', 'admin_back')],
 ]);
 
+// ─── Clavier retour canaux ────────────────────────────────────────────────────
+export const backToChannelsKeyboard = Markup.inlineKeyboard([
+  [Markup.button.callback('◀️ Retour Canaux & Groupes', 'admin_channels')],
+]);
+
+// ─── Clavier groupe détecté ───────────────────────────────────────────────────
+export function detectedGroupKeyboard(chatId) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('🛡 Groupe Admin', `set_as_admin_group_${chatId}`),
+      Markup.button.callback('💸 Canal Retrait', `set_as_wd_channel_${chatId}`),
+    ],
+    [Markup.button.callback('📢 Canal Obligatoire', `set_as_req_channel_${chatId}`)],
+    [Markup.button.callback('❌ Ignorer', 'ignore_detected_group')],
+  ]);
+}
+
+// ─── Clavier tests connexion ──────────────────────────────────────────────────
+export const channelsTestKeyboard = Markup.inlineKeyboard([
+  [
+    Markup.button.callback('🔌 Tester Groupe Admin', 'test_admin_group'),
+    Markup.button.callback('🔌 Tester Canal Retrait', 'test_wd_channel'),
+  ],
+  [Markup.button.callback('◀️ Retour au panel', 'admin_back')],
+]);
+
 // ─── Clavier utilisateur admin ────────────────────────────────────────────────
 export function userAdminKeyboard(targetId) {
   return Markup.inlineKeyboard([

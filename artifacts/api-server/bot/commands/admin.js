@@ -11,6 +11,8 @@ import {
   adminSettingsKeyboard,
   adminWithdrawalsKeyboard,
   backToAdminKeyboard,
+  channelsTestKeyboard,
+  detectedGroupKeyboard,
   userAdminKeyboard,
 } from '../utils/keyboards.js';
 import { formatAmount, formatDate } from '../utils/messages.js';
@@ -90,74 +92,160 @@ export async function handleAdminStats(ctx) {
   }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...backToAdminKeyboard }));
 }
 
-// ─── Canaux & Groupes configurés ─────────────────────────────────────────────
+// ─── Canaux & Groupes configurés + détection ──────────────────────────────────
 export async function handleAdminChannels(ctx) {
   await ctx.answerCbQuery().catch(() => {});
 
-  const [channel, group, site, withdrawalChannel] = await Promise.all([
+  const [channel, group, site, withdrawalChannel, adminGroupId] = await Promise.all([
     getSetting('required_channel'),
     getSetting('required_group'),
     getSetting('required_site'),
     getSetting('withdrawal_channel'),
+    getSetting('admin_group_id'),
   ]);
 
-  const lines = [];
-
-  // Récupère le nombre de membres d'un chat Telegram
-  async function getMembersCount(chatId) {
+  async function getChatSummary(chatId, label, unit = 'abonnés') {
     if (!chatId) return null;
     try {
-      const count = await ctx.telegram.getChatMembersCount(chatId);
-      return count;
+      const [chat, count] = await Promise.all([
+        ctx.telegram.getChat(chatId),
+        ctx.telegram.getChatMembersCount(chatId),
+      ]);
+      const title = chat.title || chat.username || chatId;
+      return `${label}\n📌 *${title}*\n🆔 \`${chatId}\`\n👥 *${Number(count).toLocaleString('fr-FR')}* ${unit}`;
     } catch {
-      return null;
+      return `${label}\n🆔 \`${chatId}\`\n❓ _Accès refusé — ajoute le bot comme administrateur_`;
     }
   }
 
-  // Récupère les infos d'un chat (titre, type)
-  async function getChatInfo(chatId) {
-    if (!chatId) return null;
-    try {
-      const chat = await ctx.telegram.getChat(chatId);
-      return { title: chat.title || chat.username || chatId, type: chat.type };
-    } catch {
-      return null;
-    }
-  }
+  const results = await Promise.all([
+    getChatSummary(channel, '📢 *Canal obligatoire*', 'abonnés'),
+    getChatSummary(group, '👥 *Groupe obligatoire*', 'membres'),
+    getChatSummary(withdrawalChannel, '💸 *Canal de retrait*', 'abonnés'),
+    getChatSummary(adminGroupId, '🛡 *Groupe administrateur*', 'membres'),
+  ]);
 
-  if (channel) {
-    const [info, count] = await Promise.all([getChatInfo(channel), getMembersCount(channel)]);
-    const title = info?.title || channel;
-    const countStr = count !== null ? `*${Number(count).toLocaleString('fr-FR')}* abonnés` : '❓ Accès refusé (bot non admin)';
-    lines.push(`📢 *Canal obligatoire*\n📌 ${title}\n👥 ${countStr}`);
-  }
+  const lines = results.filter(Boolean);
+  if (site) lines.push(`🌐 *Site web obligatoire*\n🔗 ${site}`);
 
-  if (group) {
-    const [info, count] = await Promise.all([getChatInfo(group), getMembersCount(group)]);
-    const title = info?.title || group;
-    const countStr = count !== null ? `*${Number(count).toLocaleString('fr-FR')}* membres` : '❓ Accès refusé (bot non admin)';
-    lines.push(`👥 *Groupe obligatoire*\n📌 ${title}\n👤 ${countStr}`);
-  }
+  const body = lines.length
+    ? lines.join('\n\n━━━━━━━━━━━━━━━━━━\n')
+    : '❌ Aucun canal ou groupe configuré.';
 
-  if (withdrawalChannel) {
-    const [info, count] = await Promise.all([getChatInfo(withdrawalChannel), getMembersCount(withdrawalChannel)]);
-    const title = info?.title || withdrawalChannel;
-    const countStr = count !== null ? `*${Number(count).toLocaleString('fr-FR')}* abonnés` : '❓ Accès refusé (bot non admin)';
-    lines.push(`💸 *Canal de retrait*\n📌 ${title}\n👥 ${countStr}`);
-  }
-
-  if (site) {
-    lines.push(`🌐 *Site web obligatoire*\n🔗 ${site}`);
-  }
-
-  const text = lines.length
-    ? `📡 *CANAUX & GROUPES CONFIGURÉS*\n\n━━━━━━━━━━━━━━━━━━\n${lines.join('\n\n━━━━━━━━━━━━━━━━━━\n')}\n━━━━━━━━━━━━━━━━━━\n\n💡 _Pour voir les stats, le bot doit être administrateur du canal/groupe._`
-    : `📡 *CANAUX & GROUPES CONFIGURÉS*\n\n━━━━━━━━━━━━━━━━━━\n❌ Aucun canal ou groupe configuré.\n\nConfigure-les via ⚙️ Paramètres dans le panel admin.`;
+  const text =
+    `📡 *CANAUX & GROUPES*\n\n━━━━━━━━━━━━━━━━━━\n${body}\n━━━━━━━━━━━━━━━━━━\n\n` +
+    `💡 *Détection automatique :* Ajoute le bot dans un groupe — il te demandera son rôle automatiquement.\n` +
+    `🔌 Utilise les boutons ci-dessous pour tester les connexions.`;
 
   await ctx.editMessageText(text, {
     parse_mode: 'Markdown',
-    ...backToAdminKeyboard,
-  }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...backToAdminKeyboard }));
+    ...channelsTestKeyboard,
+  }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...channelsTestKeyboard }));
+}
+
+// ─── Test connexion groupe admin ──────────────────────────────────────────────
+export async function handleTestAdminGroup(ctx) {
+  await ctx.answerCbQuery('🔌 Test en cours...').catch(() => {});
+  const groupId = await getSetting('admin_group_id');
+  if (!groupId) {
+    return ctx.reply('❌ *Groupe admin non configuré.*\n\nAjoute le bot dans ton groupe admin, puis choisis "🛡 Groupe Admin" quand il détecte le groupe.', { parse_mode: 'Markdown' });
+  }
+  try {
+    await ctx.telegram.sendMessage(groupId,
+      `✅ *TEST DE CONNEXION — GROUPE ADMIN*\n\n` +
+      `🤖 Le bot @neomcashbot est bien connecté à ce groupe !\n` +
+      `📢 Tu recevras ici les notifications suivantes :\n` +
+      `• 🆕 Nouveaux utilisateurs\n` +
+      `• 💸 Demandes de retrait\n` +
+      `• ✅ Retraits validés / ❌ Refusés\n` +
+      `• 🚫 Utilisateurs bannis\n\n` +
+      `📅 Test effectué le ${new Date().toLocaleString('fr-FR')}`,
+      { parse_mode: 'Markdown' }
+    );
+    await ctx.reply(`✅ *Connexion réussie !*\n\nLe bot est bien connecté au groupe admin \`${groupId}\`.\nUn message de test a été envoyé.`, { parse_mode: 'Markdown' });
+  } catch (err) {
+    await ctx.reply(
+      `❌ *Échec de connexion au groupe admin*\n\n🆔 ID : \`${groupId}\`\n⚠️ Erreur : ${err.message}\n\n💡 Vérifie que le bot est bien *administrateur* du groupe.`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+}
+
+// ─── Test connexion canal retrait ──────────────────────────────────────────────
+export async function handleTestWdChannel(ctx) {
+  await ctx.answerCbQuery('🔌 Test en cours...').catch(() => {});
+  const channelId = await getSetting('withdrawal_channel');
+  if (!channelId) {
+    return ctx.reply('❌ *Canal de retrait non configuré.*\n\nAjoute le bot dans ton canal de retrait, puis choisis "💸 Canal Retrait" quand il détecte le canal.', { parse_mode: 'Markdown' });
+  }
+  try {
+    await ctx.telegram.sendMessage(channelId,
+      `✅ *TEST DE CONNEXION — CANAL DE RETRAIT*\n\n` +
+      `🤖 Le bot @neomcashbot est bien connecté à ce canal !\n` +
+      `💸 Les notifications de retrait apparaîtront ici :\n\n` +
+      `*Exemple :*\n` +
+      `💸 Retrait validé pour Jean Dupont\n` +
+      `💰 Montant : 5 000 FCFA\n` +
+      `📱 Orange Money — 07XXXXXXXX\n\n` +
+      `📅 Test effectué le ${new Date().toLocaleString('fr-FR')}`,
+      { parse_mode: 'Markdown' }
+    );
+    await ctx.reply(`✅ *Connexion réussie !*\n\nLe bot est bien connecté au canal de retrait \`${channelId}\`.\nUn message de test a été envoyé.`, { parse_mode: 'Markdown' });
+  } catch (err) {
+    await ctx.reply(
+      `❌ *Échec de connexion au canal de retrait*\n\n🆔 ID : \`${channelId}\`\n⚠️ Erreur : ${err.message}\n\n💡 Vérifie que le bot est bien *administrateur* du canal.`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+}
+
+// ─── Définir groupe détecté ────────────────────────────────────────────────────
+export async function handleSetDetectedGroup(ctx, chatId, role) {
+  await ctx.answerCbQuery().catch(() => {});
+  const id = chatId.toString();
+
+  let settingKey, label;
+  if (role === 'admin')    { settingKey = 'admin_group_id';     label = '🛡 Groupe Admin'; }
+  if (role === 'wd')       { settingKey = 'withdrawal_channel'; label = '💸 Canal Retrait'; }
+  if (role === 'channel')  { settingKey = 'required_channel';   label = '📢 Canal Obligatoire'; }
+
+  await setSetting(settingKey, id);
+
+  let testMsg = '';
+  try {
+    if (role === 'admin') {
+      await ctx.telegram.sendMessage(id,
+        `🎉 *Groupe Admin configuré avec succès !*\n\n` +
+        `🤖 Le bot @neomcashbot est maintenant connecté à ce groupe.\n` +
+        `📢 Tu recevras ici toutes les notifications importantes :\n` +
+        `• 🆕 Nouveaux utilisateurs\n• 💸 Demandes de retrait\n• 🚫 Bannis\n\n` +
+        `✅ Connexion vérifiée.`,
+        { parse_mode: 'Markdown' }
+      );
+    } else if (role === 'wd') {
+      await ctx.telegram.sendMessage(id,
+        `🎉 *Canal de retrait configuré avec succès !*\n\n` +
+        `🤖 Le bot @neomcashbot publiera ici les notifications de retrait.\n\n` +
+        `✅ Connexion vérifiée.`,
+        { parse_mode: 'Markdown' }
+      );
+    } else if (role === 'channel') {
+      await ctx.telegram.sendMessage(id,
+        `🎉 *Canal obligatoire configuré !*\n\n` +
+        `🤖 Le bot @neomcashbot vérifiera l'adhésion des utilisateurs à ce canal.\n\n` +
+        `✅ Connexion vérifiée.`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+    testMsg = '\n✅ *Message de confirmation envoyé dans le groupe.*';
+  } catch {
+    testMsg = '\n⚠️ _Message de test échoué — ajoute le bot comme admin._';
+  }
+
+  await ctx.editMessageText(
+    `✅ *Rôle assigné : ${label}*\n\n🆔 ID sauvegardé : \`${id}\`${testMsg}`,
+    { parse_mode: 'Markdown', ...channelsTestKeyboard }
+  ).catch(() => ctx.reply(`✅ ${label} configuré : \`${id}\``, { parse_mode: 'Markdown' }));
 }
 
 // ─── Gestion retraits ─────────────────────────────────────────────────────────

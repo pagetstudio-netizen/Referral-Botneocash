@@ -10,6 +10,9 @@ import {
   adminCommand,
   handleAdminStats,
   handleAdminChannels,
+  handleTestAdminGroup,
+  handleTestWdChannel,
+  handleSetDetectedGroup,
   handleAdminWithdrawals,
   handleWithdrawalsList,
   handleAdminUsers,
@@ -243,6 +246,15 @@ export function createBot() {
   // ─── Callbacks admin — Panel ─────────────────────────────────────────────────
   bot.action('admin_stats', requireAdmin, handleAdminStats);
   bot.action('admin_channels', requireAdmin, handleAdminChannels);
+  bot.action('test_admin_group', requireAdmin, handleTestAdminGroup);
+  bot.action('test_wd_channel', requireAdmin, handleTestWdChannel);
+  bot.action('ignore_detected_group', requireAdmin, async (ctx) => {
+    await ctx.answerCbQuery('❌ Groupe ignoré').catch(() => {});
+    await ctx.deleteMessage().catch(() => {});
+  });
+  bot.action(/^set_as_admin_group_(-?\d+)$/, requireAdmin, (ctx) => handleSetDetectedGroup(ctx, ctx.match[1], 'admin'));
+  bot.action(/^set_as_wd_channel_(-?\d+)$/, requireAdmin, (ctx) => handleSetDetectedGroup(ctx, ctx.match[1], 'wd'));
+  bot.action(/^set_as_req_channel_(-?\d+)$/, requireAdmin, (ctx) => handleSetDetectedGroup(ctx, ctx.match[1], 'channel'));
   bot.action('admin_withdrawals', requireAdmin, handleAdminWithdrawals);
   bot.action('admin_users', requireAdmin, handleAdminUsers);
   bot.action('admin_broadcast', requireAdmin, handleAdminBroadcast);
@@ -438,6 +450,42 @@ export function createBot() {
 
   // ─── Support annulé ──────────────────────────────────────────────────────────
   bot.action('cancel_support', handleCancelSupport);
+
+  // ─── Détection automatique : bot ajouté dans un groupe/canal ─────────────────
+  bot.on('my_chat_member', async (ctx) => {
+    const update = ctx.myChatMember;
+    if (!update) return;
+
+    const newStatus = update.new_chat_member?.status;
+    const chat = update.chat;
+
+    // Bot ajouté ou promu admin dans un groupe/canal/supergroupe
+    if (!['member', 'administrator'].includes(newStatus)) return;
+    if (!['group', 'supergroup', 'channel'].includes(chat.type)) return;
+
+    const chatId = chat.id;
+    const chatTitle = chat.title || chat.username || String(chatId);
+    const typeLabel = chat.type === 'channel' ? '📢 Canal' : '👥 Groupe';
+    const isAdmin = newStatus === 'administrator' ? '✅ Admin' : '👤 Membre';
+
+    const text =
+      `🔔 *NOUVEAU ${typeLabel.toUpperCase()} DÉTECTÉ*\n\n` +
+      `📌 *${chatTitle}*\n` +
+      `🆔 ID : \`${chatId}\`\n` +
+      `🤖 Statut bot : ${isAdmin}\n\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `Quel est le rôle de ce ${chat.type === 'channel' ? 'canal' : 'groupe'} ?`;
+
+    const { detectedGroupKeyboard } = await import('./utils/keyboards.js');
+    const adminIds = (process.env.ADMIN_IDS || '').split(',').map(Number).filter(Boolean);
+
+    for (const adminId of adminIds) {
+      await ctx.telegram.sendMessage(adminId, text, {
+        parse_mode: 'Markdown',
+        ...detectedGroupKeyboard(chatId),
+      }).catch(() => {});
+    }
+  });
 
   // ─── Gestion erreurs ─────────────────────────────────────────────────────────
   bot.catch((err, ctx) => {
