@@ -133,8 +133,10 @@ export async function getMissingChannels(telegram, userId, channels) {
       const member = await telegram.getChatMember(ch.chatIdOrUrl, userId);
       const isMember = ['member', 'administrator', 'creator'].includes(member.status);
       if (!isMember) missing.push(ch);
-    } catch {
-      // Bot pas dans le canal → on saute (on ne bloque pas)
+    } catch (err) {
+      // Bot pas dans le canal ou erreur API → on bloque quand même pour forcer l'adhésion
+      logger.warn('getMissingChannels: impossible de vérifier canal', { chatId: ch.chatIdOrUrl, err: err.message });
+      missing.push(ch);
     }
   }
   return missing;
