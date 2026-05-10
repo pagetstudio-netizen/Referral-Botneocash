@@ -1,6 +1,6 @@
 /**
- * Utilitaire — Crédit du parrainage après vérification canal
- * Appelé depuis start.js (si pas de canal ou déjà membre)
+ * Utilitaire — Crédit du parrainage après vérification canaux
+ * Appelé depuis start.js (si tous les canaux OK ou aucun canal)
  * et depuis bot.js (callback verify_channel).
  */
 import Referral from '../models/Referral.js';
@@ -33,7 +33,7 @@ export async function creditPendingReferral(filleul, telegram, botUsername) {
       amount: bonus,
       balanceBefore: balBefore,
       balanceAfter: referrer.balance,
-      description: `Parrainage de ${filleul.firstName} (canal vérifié)`,
+      description: `Parrainage de ${filleul.firstName} (canaux vérifiés)`,
     });
 
     referral.status = 'credited';
@@ -58,8 +58,7 @@ export async function creditPendingReferral(filleul, telegram, botUsername) {
         const notifText =
           `🎉 *Félicitations ${referrer.firstName} !*\n\n` +
           `💸 Tu viens de gagner *${bonus} FCFA* !\n\n` +
-          `👤 *${filleul.firstName}* vient de rejoindre NeoCash grâce à ton lien` +
-          ` et a rejoint le canal.\n\n` +
+          `👤 *${filleul.firstName}* vient de rejoindre NeoCash grâce à ton lien.\n\n` +
           `━━━━━━━━━━━━━━━━━━\n` +
           `💰 Bonus crédité : *+${bonus} FCFA*\n` +
           `👥 Total filleuls validés : *${referrer.referralCount}*\n` +

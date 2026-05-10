@@ -100,26 +100,27 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
       bonus,
     });
 
-    // Si aucun canal obligatoire configuré → créditer immédiatement
-    const channelId = await getSetting('required_channel');
-    const groupId = await getSetting('required_group');
-    if (!channelId && !groupId) {
+    // Vérifier si des canaux obligatoires sont configurés
+    const { default: RequiredChannel } = await import('../models/RequiredChannel.js');
+    const channels = await RequiredChannel.findAll();
+
+    if (!channels.length) {
+      // Aucun canal → créditer immédiatement
       await creditPendingReferral(newUser, telegram, botUsername);
       return;
     }
 
-    // Canal configuré : vérifier si le filleul est déjà membre
-    const requiredChat = channelId || groupId;
+    // Canaux configurés : vérifier si le filleul est déjà membre de tous
+    const { getMissingChannels } = await import('../middleware/auth.js');
     try {
-      const member = await telegram.getChatMember(requiredChat, newUser.telegramId);
-      const alreadyMember = ['member', 'administrator', 'creator'].includes(member.status);
-      if (alreadyMember) {
-        // Déjà dans le canal → créditer maintenant sans attendre le bouton
+      const missing = await getMissingChannels(telegram, newUser.telegramId, channels);
+      if (missing.length === 0) {
+        // Déjà membre de tout → créditer maintenant
         await creditPendingReferral(newUser, telegram, botUsername);
       }
       // Sinon → sera crédité quand il cliquera sur ✅ Vérifier
     } catch {
-      // Erreur API (bot pas dans le canal, etc.) → on laisse en pending
+      // Erreur API → laisser en pending
     }
   } catch (err) {
     logger.error('processReferral error', { err: err.message });

@@ -113,3 +113,25 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_sent ON notifications(sent);
+
+-- ─── Canaux obligatoires multi-canaux ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS required_channels (
+  id SERIAL PRIMARY KEY,
+  label TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT 'channel' CHECK (type IN ('channel', 'group', 'website')),
+  chat_id_or_url TEXT NOT NULL,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS channel_verifications (
+  id BIGSERIAL PRIMARY KEY,
+  channel_id INTEGER NOT NULL,
+  user_telegram_id BIGINT NOT NULL,
+  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(channel_id, user_telegram_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_channel_verif_user ON channel_verifications(user_telegram_id);
+CREATE INDEX IF NOT EXISTS idx_channel_verif_channel ON channel_verifications(channel_id);

@@ -1,10 +1,11 @@
 /**
- * Middleware d'authentification et vérification canal
+ * Middleware d'authentification et vérification canal (multi-canaux)
  */
 import User from '../models/User.js';
+import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting } from '../models/Settings.js';
-import { channelVerifyMessage } from '../utils/messages.js';
-import { verifyKeyboard } from '../utils/keyboards.js';
+import { multiChannelVerifyKeyboard } from '../utils/keyboards.js';
+import { multiChannelVerifyMessage } from '../utils/messages.js';
 import logger from '../utils/logger.js';
 
 // ─── Récupérer ou créer un utilisateur ────────────────────────────────────────
@@ -24,7 +25,6 @@ export async function getOrCreateUser(ctx, next) {
         referralCode: code,
       });
     } else {
-      // Mettre à jour les infos
       user.username = tg.username || null;
       user.firstName = tg.first_name || '';
       user.lastName = tg.last_name || '';
@@ -62,49 +62,62 @@ export async function checkMaintenance(ctx, next) {
   return next();
 }
 
-// ─── Vérifier adhésion canal ───────────────────────────────────────────────────
+// ─── Vérifier adhésion aux canaux obligatoires (multi-canaux) ─────────────────
 export async function checkChannelMembership(ctx, next) {
-  // Passer les callbacks de vérification
   if (ctx.callbackQuery?.data === 'verify_channel') return next();
 
   const userId = ctx.from?.id;
   if (!userId) return next();
 
-  // Les admins passent toujours
   const isAdmin = await isUserAdmin(userId);
   if (isAdmin) return next();
 
-  const channelId = await getSetting('required_channel');
-  const groupId = await getSetting('required_group');
-
-  const requiredChat = channelId || groupId;
-  if (!requiredChat) return next();
-
   try {
-    const member = await ctx.telegram.getChatMember(requiredChat, userId);
-    const allowed = ['member', 'administrator', 'creator'].includes(member.status);
-    if (!allowed) {
-      return sendVerificationMessage(ctx, requiredChat);
-    }
-    return next();
+    const channels = await RequiredChannel.findAll();
+    if (!channels.length) return next();
+
+    const missing = await getMissingChannels(ctx.telegram, userId, channels);
+    if (!missing.length) return next();
+
+    return sendMultiVerifyMessage(ctx, missing);
   } catch (err) {
     logger.warn('checkChannelMembership error', { err: err.message });
-    // En cas d'erreur (ex: bot pas dans le canal), laisser passer
     return next();
   }
 }
 
-async function sendVerificationMessage(ctx, chatId) {
-  const joinUrl = chatId.toString().startsWith('-')
-    ? null
-    : `https://t.me/${chatId.replace('@', '')}`;
+// ─── Utilitaire : trouver les canaux non rejoints ─────────────────────────────
+export async function getMissingChannels(telegram, userId, channels) {
+  const missing = [];
+  for (const ch of channels) {
+    if (ch.type === 'website') {
+      // Pour les sites web : vérifier si l'utilisateur a cliqué "Vérifier"
+      // On ne peut pas vérifier automatiquement → traiter comme non vérifié si pas en DB
+      try {
+        const verified = await RequiredChannel.getUserVerifiedIds(userId);
+        if (!verified.includes(ch.id)) missing.push(ch);
+      } catch {
+        missing.push(ch);
+      }
+      continue;
+    }
+    try {
+      const member = await telegram.getChatMember(ch.chatIdOrUrl, userId);
+      const isMember = ['member', 'administrator', 'creator'].includes(member.status);
+      if (!isMember) missing.push(ch);
+    } catch {
+      // Bot pas dans le canal → on saute (on ne bloque pas)
+    }
+  }
+  return missing;
+}
 
-  const site = await getSetting('required_site');
-  const joinLink = joinUrl || site || null;
-
-  await ctx.reply(channelVerifyMessage(), {
+async function sendMultiVerifyMessage(ctx, missingChannels) {
+  const text = multiChannelVerifyMessage(missingChannels);
+  const keyboard = multiChannelVerifyKeyboard(missingChannels);
+  await ctx.reply(text, {
     parse_mode: 'Markdown',
-    ...verifyKeyboard(joinLink),
+    ...keyboard,
   }).catch(() => {});
 }
 

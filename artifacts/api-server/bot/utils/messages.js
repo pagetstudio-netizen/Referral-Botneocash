@@ -162,7 +162,29 @@ Pour accéder au bot, tu dois rejoindre notre communauté officielle.
 3️⃣ Clique sur *✅ Vérifier*
 ━━━━━━━━━━━━━━━━━━
 
-⚠️ Si tu quittes le canal, l'accès sera bloqué.`;
+⚠️ Si tu quittes le canal, l'accès sera bloqué.`;}
+
+// ─── Message vérification multi-canaux ─────────────────────────────────────────
+export function multiChannelVerifyMessage(channels) {
+  const lines = channels.map((ch, i) => {
+    const icon = ch.type === 'website' ? '🌐' : ch.type === 'group' ? '👥' : '📢';
+    const label = ch.label || ch.chatIdOrUrl;
+    return `${i + 1}️⃣ ${icon} *${label}*`;
+  });
+
+  return `🔒 *ACCÈS REQUIS*
+
+━━━━━━━━━━━━━━━━━━
+Pour utiliser le bot, rejoins ${channels.length > 1 ? 'tous ces canaux' : 'ce canal'} :
+
+${lines.join('\n')}
+
+━━━━━━━━━━━━━━━━━━
+1️⃣ Clique sur chaque bouton ci-dessous
+2️⃣ Rejoins ${channels.length > 1 ? 'chaque canal' : 'le canal'}
+3️⃣ Clique sur ✅ *Vérifier mon accès*
+
+⚠️ L'accès est retiré si tu quittes l'un des canaux.`;
 }
 
 // ─── Message notification admin ────────────────────────────────────────────────

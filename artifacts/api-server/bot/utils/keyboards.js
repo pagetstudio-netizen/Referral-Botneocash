@@ -13,12 +13,29 @@ export const mainKeyboard = Markup.keyboard([
   .resize()
   .persistent();
 
-// ─── Menu vérification canal ───────────────────────────────────────────────────
+// ─── Menu vérification canal (ancien — gardé pour compatibilité) ───────────────
 export function verifyKeyboard(joinUrl, verifyCallback = 'verify_channel') {
   const buttons = [];
   if (joinUrl) buttons.push(Markup.button.url('📢 Rejoindre', joinUrl));
   buttons.push(Markup.button.callback('✅ Vérifier', verifyCallback));
   return Markup.inlineKeyboard([buttons]);
+}
+
+// ─── Menu vérification multi-canaux ───────────────────────────────────────────
+export function multiChannelVerifyKeyboard(channels) {
+  const rows = channels.map(ch => {
+    const label = ch.label || (ch.type === 'website' ? '🌐 Visiter le site' : '📢 Rejoindre');
+    const url = ch.type === 'website'
+      ? ch.chatIdOrUrl
+      : ch.chatIdOrUrl.toString().startsWith('-')
+        ? null
+        : `https://t.me/${ch.chatIdOrUrl.replace('@', '')}`;
+    if (url) return [Markup.button.url(label, url)];
+    return [];
+  }).filter(r => r.length > 0);
+
+  rows.push([Markup.button.callback('✅ Vérifier mon accès', 'verify_channel')]);
+  return Markup.inlineKeyboard(rows);
 }
 
 // ─── Clavier pays pour retrait ─────────────────────────────────────────────────

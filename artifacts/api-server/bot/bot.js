@@ -92,36 +92,65 @@ export function createBot() {
   // ─── Callbacks inline ────────────────────────────────────────────────────────
   bot.action('verify_channel', async (ctx) => {
     await ctx.answerCbQuery();
-    const channelId = await getSetting('required_channel') || await getSetting('required_group');
-
-    if (!channelId) {
-      ctx.dbUser.isVerified = true;
-      await ctx.dbUser.save();
-      await ctx.editMessageText('✅ Vérification réussie ! Bienvenue !').catch(() => {});
-      await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
-      return ctx.reply('✅ *Accès accordé !*\n\nUtilise le menu ci-dessous.', {
-        parse_mode: 'Markdown',
-        ...mainKeyboard,
-      });
-    }
+    const userId = ctx.from.id;
 
     try {
-      const member = await ctx.telegram.getChatMember(channelId, ctx.from.id);
-      const allowed = ['member', 'administrator', 'creator'].includes(member.status);
+      const { default: RequiredChannel } = await import('./models/RequiredChannel.js');
+      const { getMissingChannels } = await import('./middleware/auth.js');
 
-      if (allowed) {
+      const channels = await RequiredChannel.findAll();
+
+      if (!channels.length) {
+        // Aucun canal configuré
         ctx.dbUser.isVerified = true;
         await ctx.dbUser.save();
-        await ctx.editMessageText('✅ Vérification réussie !').catch(() => {});
+        await ctx.editMessageText('✅ Vérification réussie ! Bienvenue !').catch(() => {});
         await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
-        return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.', {
-          parse_mode: 'Markdown',
-          ...mainKeyboard,
+        return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash !', {
+          parse_mode: 'Markdown', ...mainKeyboard,
         });
-      } else {
-        return ctx.answerCbQuery('❌ Tu n\'as pas encore rejoint !', { show_alert: true });
       }
-    } catch {
+
+      // Vérifier chaque canal Telegram
+      const stillMissing = [];
+      for (const ch of channels) {
+        if (ch.type === 'website') {
+          // Pour les sites : enregistrer comme vérifié (on fait confiance au clic)
+          await RequiredChannel.addVerification(ch.id, userId);
+          continue;
+        }
+        try {
+          const member = await ctx.telegram.getChatMember(ch.chatIdOrUrl, userId);
+          const isMember = ['member', 'administrator', 'creator'].includes(member.status);
+          if (isMember) {
+            await RequiredChannel.addVerification(ch.id, userId);
+          } else {
+            stillMissing.push(ch);
+          }
+        } catch {
+          // Bot pas dans le canal → on saute (on ne bloque pas)
+        }
+      }
+
+      if (stillMissing.length > 0) {
+        const names = stillMissing.map(ch => ch.label || ch.chatIdOrUrl).join(', ');
+        return ctx.answerCbQuery(
+          `❌ Tu n'as pas encore rejoint : ${names}`,
+          { show_alert: true }
+        );
+      }
+
+      // Tout bon → accès accordé
+      ctx.dbUser.isVerified = true;
+      await ctx.dbUser.save();
+      await ctx.editMessageText('✅ Accès accordé ! Bienvenue !').catch(() => {});
+      await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
+      return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.', {
+        parse_mode: 'Markdown', ...mainKeyboard,
+      });
+
+    } catch (err) {
+      logger.error('verify_channel error', { err: err.message });
       return ctx.answerCbQuery('⚠️ Vérification impossible. Réessaie.', { show_alert: true });
     }
   });

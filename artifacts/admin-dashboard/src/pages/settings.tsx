@@ -134,9 +134,9 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Channels */}
+        {/* Bot config */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Canaux et groupes</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">Configuration du bot</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom du bot</label>
@@ -146,26 +146,6 @@ export default function Settings() {
                 onChange={(e) => setForm(f => ({ ...f, botName: e.target.value }))}
                 className={inputClass}
                 placeholder="NeoCash"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Canal obligatoire (ID ou @username)</label>
-              <input
-                type="text"
-                value={form.requiredChannel ?? ""}
-                onChange={(e) => setForm(f => ({ ...f, requiredChannel: e.target.value }))}
-                className={inputClass}
-                placeholder="@mon_canal"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Groupe obligatoire (ID ou @username)</label>
-              <input
-                type="text"
-                value={form.requiredGroup ?? ""}
-                onChange={(e) => setForm(f => ({ ...f, requiredGroup: e.target.value }))}
-                className={inputClass}
-                placeholder="@mon_groupe"
               />
             </div>
             <div>
@@ -189,6 +169,9 @@ export default function Settings() {
               />
             </div>
           </div>
+          <p className="text-xs text-gray-400 mt-3">
+            Les canaux obligatoires sont geres depuis la page <a href="/channels" className="text-blue-600 hover:underline">Canaux obligatoires</a>.
+          </p>
         </div>
 
         {/* Support */}

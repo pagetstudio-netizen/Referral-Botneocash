@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Users from "@/pages/users";
 import UserDetail from "@/pages/user-detail";
 import Withdrawals from "@/pages/withdrawals";
+import Channels from "@/pages/channels";
 import Settings from "@/pages/settings";
 import Broadcast from "@/pages/broadcast";
 import NotFound from "@/pages/not-found";
@@ -28,6 +29,7 @@ function App() {
             <Route path="/users/:telegramId" component={() => <AdminLayout><UserDetail /></AdminLayout>} />
             <Route path="/users" component={() => <AdminLayout><Users /></AdminLayout>} />
             <Route path="/withdrawals" component={() => <AdminLayout><Withdrawals /></AdminLayout>} />
+            <Route path="/channels" component={() => <AdminLayout><Channels /></AdminLayout>} />
             <Route path="/settings" component={() => <AdminLayout><Settings /></AdminLayout>} />
             <Route path="/broadcast" component={() => <AdminLayout><Broadcast /></AdminLayout>} />
             <Route path="/" component={() => <AdminLayout><Dashboard /></AdminLayout>} />

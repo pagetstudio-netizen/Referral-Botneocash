@@ -7,6 +7,7 @@ const navItems = [
   { href: "/", label: "Tableau de bord" },
   { href: "/users", label: "Utilisateurs" },
   { href: "/withdrawals", label: "Retraits" },
+  { href: "/channels", label: "Canaux obligatoires" },
   { href: "/settings", label: "Parametres" },
   { href: "/broadcast", label: "Diffusion" },
 ];

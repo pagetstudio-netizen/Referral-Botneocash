@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import Withdrawal from '../models/Withdrawal.js';
 import Transaction from '../models/Transaction.js';
+import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting, setSetting } from '../models/Settings.js';
 import logger from '../utils/logger.js';
 
@@ -414,6 +415,67 @@ router.put('/admin/settings', authMiddleware, async (req, res) => {
     }
     logger.info('Admin updated settings', { keys: Object.keys(updates) });
     res.json({ success: true, message: 'Paramètres mis à jour' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/admin/channels ───────────────────────────────────────────────────
+router.get('/admin/channels', authMiddleware, async (req, res) => {
+  try {
+    const channels = await RequiredChannel.findAllAdmin();
+    res.json(channels.map(ch => ({
+      id: ch.id,
+      label: ch.label,
+      type: ch.type,
+      chatIdOrUrl: ch.chatIdOrUrl,
+      displayOrder: ch.displayOrder,
+      isActive: ch.isActive,
+      subscribers: ch.subscribers ?? 0,
+      createdAt: ch.createdAt,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/admin/channels ──────────────────────────────────────────────────
+router.post('/admin/channels', authMiddleware, async (req, res) => {
+  try {
+    const { label, type, chatIdOrUrl, displayOrder } = req.body;
+    if (!label || !chatIdOrUrl) return res.status(400).json({ error: 'label et chatIdOrUrl requis' });
+    if (!['channel', 'group', 'website'].includes(type)) {
+      return res.status(400).json({ error: 'type invalide (channel, group, website)' });
+    }
+    const ch = await RequiredChannel.create({ label, type, chatIdOrUrl, displayOrder: displayOrder ?? 0 });
+    logger.info('Admin added required channel', { label, type, chatIdOrUrl });
+    res.status(201).json({ id: ch.id, label: ch.label, type: ch.type, chatIdOrUrl: ch.chatIdOrUrl, displayOrder: ch.displayOrder, isActive: ch.isActive, subscribers: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PUT /api/admin/channels/:id ───────────────────────────────────────────────
+router.put('/admin/channels/:id', authMiddleware, async (req, res) => {
+  try {
+    const { label, type, chatIdOrUrl, displayOrder, isActive } = req.body;
+    const ch = await RequiredChannel.update(req.params.id, {
+      label, type, chatIdOrUrl, displayOrder: displayOrder ?? 0, isActive: isActive ?? true,
+    });
+    if (!ch) return res.status(404).json({ error: 'Canal introuvable' });
+    logger.info('Admin updated required channel', { id: req.params.id });
+    res.json({ id: ch.id, label: ch.label, type: ch.type, chatIdOrUrl: ch.chatIdOrUrl, displayOrder: ch.displayOrder, isActive: ch.isActive });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DELETE /api/admin/channels/:id ────────────────────────────────────────────
+router.delete('/admin/channels/:id', authMiddleware, async (req, res) => {
+  try {
+    await RequiredChannel.delete(req.params.id);
+    logger.info('Admin deleted required channel', { id: req.params.id });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
