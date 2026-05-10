@@ -6,7 +6,6 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import Referral from '../models/Referral.js';
-import Transaction from '../models/Transaction.js';
 import { getSetting } from '../models/Settings.js';
 import { welcomeMessage } from '../utils/messages.js';
 import { mainKeyboard } from '../utils/keyboards.js';
@@ -76,76 +75,26 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
 
     const bonus = await getSetting('referral_bonus') || 120;
 
-    const balBefore = referrer.balance;
-    referrer.balance += bonus;
-    referrer.referralEarnings += bonus;
-    referrer.referralCount += 1;
-    await referrer.save();
-
+    // Marquer le filleul comme parrainé
     newUser.referredBy = referrer.telegramId;
     await newUser.save();
 
+    // ⚠️ Parrainage en ATTENTE — bonus crédité uniquement après vérification
+    // des canaux/groupes obligatoires par le filleul (voir verify_channel dans bot.js)
     await Referral.create({
       referrerId: referrer.telegramId,
       referredId: newUser.telegramId,
       referredUsername: newUser.username,
       referredFirstName: newUser.firstName,
       amount: bonus,
+      status: 'pending',
     });
 
-    await Transaction.create({
-      userId: referrer.telegramId,
-      type: 'referral_bonus',
-      amount: bonus,
-      balanceBefore: balBefore,
-      balanceAfter: referrer.balance,
-      description: `Parrainage de ${newUser.firstName}`,
-    });
-
-    logger.info('Referral processed', {
+    logger.info('Referral pending — waiting for channel verification', {
       referrerId: referrer.telegramId,
       referredId: newUser.telegramId,
       bonus,
     });
-
-    // ─── Notification au parrain ───────────────────────────────────────────────
-    if (telegram) {
-      try {
-        const referralLink = botUsername
-          ? `https://t.me/${botUsername}?start=${referrer.referralCode || referrer.telegramId}`
-          : null;
-
-        const shareText = encodeURIComponent(
-          `🤑 Rejoins NeoCash et gagne de l'argent gratuitement ! Bonus quotidien + parrainage en FCFA.`
-        );
-        const shareUrl = referralLink
-          ? `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`
-          : null;
-
-        const notifText =
-          `🎉 *Félicitations ${referrer.firstName} !*\n\n` +
-          `💸 Vous venez de gagner *${bonus} FCFA* !\n\n` +
-          `👤 *${newUser.firstName}* vient de rejoindre NeoCash grâce à votre lien de parrainage.\n\n` +
-          `━━━━━━━━━━━━━━━━━━\n` +
-          `💰 Bonus crédité : *+${bonus} FCFA*\n` +
-          `👥 Total filleuls : *${referrer.referralCount}*\n` +
-          `💳 Nouveau solde : *${referrer.balance.toLocaleString('fr-FR')} FCFA*\n` +
-          `━━━━━━━━━━━━━━━━━━\n\n` +
-          `📲 Partagez encore votre lien pour gagner plus !`;
-
-        const buttons = [];
-        if (shareUrl) {
-          buttons.push([{ text: '📤 Partager encore', url: shareUrl }]);
-        }
-
-        await telegram.sendMessage(referrer.telegramId, notifText, {
-          parse_mode: 'Markdown',
-          reply_markup: buttons.length ? { inline_keyboard: buttons } : undefined,
-        });
-      } catch (notifErr) {
-        logger.warn('Referral notification failed', { err: notifErr.message });
-      }
-    }
   } catch (err) {
     logger.error('processReferral error', { err: err.message });
   }

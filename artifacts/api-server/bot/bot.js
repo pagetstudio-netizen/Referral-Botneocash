@@ -41,8 +41,101 @@ import {
 } from './handlers/withdrawal.js';
 import { mainKeyboard } from './utils/keyboards.js';
 import { getSetting } from './models/Settings.js';
+import Referral from './models/Referral.js';
+import User from './models/User.js';
+import Transaction from './models/Transaction.js';
 import { notifyUser } from './utils/notify.js';
 import logger from './utils/logger.js';
+
+/**
+ * Crédite le parrain d'un filleul si un parrainage est en attente (pending).
+ * Appelé après que le filleul ait vérifié son adhésion aux canaux obligatoires.
+ */
+async function creditPendingReferral(filleul, telegram, botUsername) {
+  try {
+    // Chercher un parrainage en attente pour ce filleul
+    const referral = await Referral.findOne({
+      referredId: filleul.telegramId,
+      status: 'pending',
+    });
+    if (!referral) return;
+
+    // Charger le parrain
+    const referrer = await User.findOne({ telegramId: referral.referrerId });
+    if (!referrer) return;
+
+    const bonus = referral.amount;
+    const balBefore = referrer.balance;
+
+    // Créditer le parrain
+    referrer.balance += bonus;
+    referrer.referralEarnings += bonus;
+    referrer.referralCount += 1;
+    await referrer.save();
+
+    // Créer la transaction
+    await Transaction.create({
+      userId: referrer.telegramId,
+      type: 'referral_bonus',
+      amount: bonus,
+      balanceBefore: balBefore,
+      balanceAfter: referrer.balance,
+      description: `Parrainage de ${filleul.firstName} (canal vérifié)`,
+    });
+
+    // Marquer le parrainage comme crédité
+    referral.status = 'credited';
+    referral.creditedAt = new Date();
+    await referral.save();
+
+    logger.info('Referral credited after channel verification', {
+      referrerId: referrer.telegramId,
+      referredId: filleul.telegramId,
+      bonus,
+    });
+
+    // ─── Notifier le parrain ───────────────────────────────────────────────────
+    if (telegram) {
+      try {
+        const referralLink = botUsername
+          ? `https://t.me/${botUsername}?start=${referrer.referralCode || referrer.telegramId}`
+          : null;
+
+        const shareText = encodeURIComponent(
+          `🤑 Rejoins NeoCash et gagne de l'argent gratuitement ! Bonus quotidien + parrainage en FCFA.`
+        );
+        const shareUrl = referralLink
+          ? `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`
+          : null;
+
+        const notifText =
+          `🎉 *Félicitations ${referrer.firstName} !*\n\n` +
+          `💸 Vous venez de gagner *${bonus} FCFA* !\n\n` +
+          `👤 *${filleul.firstName}* vient de rejoindre NeoCash grâce à votre lien ` +
+          `et a confirmé son adhésion au canal.\n\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `💰 Bonus crédité : *+${bonus} FCFA*\n` +
+          `👥 Total filleuls : *${referrer.referralCount}*\n` +
+          `💳 Nouveau solde : *${referrer.balance.toLocaleString('fr-FR')} FCFA*\n` +
+          `━━━━━━━━━━━━━━━━━━\n\n` +
+          `📲 Partagez encore votre lien pour gagner plus !`;
+
+        const buttons = shareUrl
+          ? { inline_keyboard: [[{ text: '📤 Partager encore', url: shareUrl }]] }
+          : undefined;
+
+        await telegram.sendMessage(referrer.telegramId, notifText, {
+          parse_mode: 'Markdown',
+          reply_markup: buttons,
+        });
+      } catch (notifErr) {
+        logger.warn('Referral notification failed', { err: notifErr.message });
+      }
+    }
+  } catch (err) {
+    logger.error('creditPendingReferral error', { err: err.message });
+  }
+}
 
 export function createBot() {
   const token = process.env.BOT_TOKEN;
@@ -93,6 +186,7 @@ export function createBot() {
       ctx.dbUser.isVerified = true;
       await ctx.dbUser.save();
       await ctx.editMessageText('✅ Vérification réussie ! Bienvenue !').catch(() => {});
+      await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
       return ctx.reply('✅ *Accès accordé !*\n\nUtilise le menu ci-dessous.', {
         parse_mode: 'Markdown',
         ...mainKeyboard,
@@ -107,6 +201,7 @@ export function createBot() {
         ctx.dbUser.isVerified = true;
         await ctx.dbUser.save();
         await ctx.editMessageText('✅ Vérification réussie !').catch(() => {});
+        await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
         return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.', {
           parse_mode: 'Markdown',
           ...mainKeyboard,

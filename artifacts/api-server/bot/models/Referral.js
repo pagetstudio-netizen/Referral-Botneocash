@@ -7,6 +7,10 @@ const referralSchema = new mongoose.Schema(
     referredUsername: { type: String, default: null },
     referredFirstName: { type: String, default: '' },
     amount: { type: Number, required: true },
+    // pending = filleul inscrit mais n'a pas encore vérifié les canaux
+    // credited = bonus accordé au parrain après vérification du filleul
+    status: { type: String, enum: ['pending', 'credited'], default: 'pending', index: true },
+    creditedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
