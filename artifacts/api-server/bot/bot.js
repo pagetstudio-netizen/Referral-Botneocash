@@ -101,9 +101,9 @@ export function createBot() {
       const channels = await RequiredChannel.findAll();
 
       if (!channels.length) {
-        // Aucun canal configuré
         ctx.dbUser.isVerified = true;
         await ctx.dbUser.save();
+        clearMembershipCache(userId);
         await ctx.editMessageText('✅ Vérification réussie ! Bienvenue !').catch(() => {});
         await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
         return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash !', {
@@ -111,33 +111,23 @@ export function createBot() {
         });
       }
 
-      // Vérifier chaque canal Telegram
-      const stillMissing = [];
-      for (const ch of channels) {
-        if (ch.type === 'website') {
-          // Pour les sites : enregistrer comme vérifié (on fait confiance au clic)
-          await RequiredChannel.addVerification(ch.id, userId);
-          continue;
-        }
-        try {
-          const member = await ctx.telegram.getChatMember(ch.chatIdOrUrl, userId);
-          const isMember = ['member', 'administrator', 'creator'].includes(member.status);
-          if (isMember) {
-            await RequiredChannel.addVerification(ch.id, userId);
-          } else {
-            stillMissing.push(ch);
-          }
-        } catch {
-          // Bot pas dans le canal → on saute (on ne bloque pas)
-        }
-      }
+      // Utiliser getMissingChannels — même logique que checkChannelMembership
+      const stillMissing = await getMissingChannels(ctx.telegram, userId, channels);
 
       if (stillMissing.length > 0) {
         const names = stillMissing.map(ch => ch.label || ch.chatIdOrUrl).join(', ');
-        return ctx.answerCbQuery(
-          `❌ Tu n'as pas encore rejoint : ${names}`,
+        await ctx.answerCbQuery(
+          `❌ Rejoins d'abord : ${names}`,
           { show_alert: true }
-        );
+        ).catch(() => {});
+        // Rafraîchir le message avec les canaux encore manquants
+        const { multiChannelVerifyMessage } = await import('./utils/messages.js');
+        const { multiChannelVerifyKeyboard } = await import('./utils/keyboards.js');
+        await ctx.editMessageText(multiChannelVerifyMessage(stillMissing), {
+          parse_mode: 'Markdown',
+          ...multiChannelVerifyKeyboard(stillMissing),
+        }).catch(() => {});
+        return;
       }
 
       // Tout bon → accès accordé
@@ -146,6 +136,7 @@ export function createBot() {
       clearMembershipCache(userId);
       await ctx.editMessageText('✅ Accès accordé ! Bienvenue !').catch(() => {});
       await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
+      logger.info('verify_channel: accès accordé et parrainage crédité', { userId });
       return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.', {
         parse_mode: 'Markdown', ...mainKeyboard,
       });

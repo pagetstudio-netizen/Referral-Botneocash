@@ -28,6 +28,7 @@ export async function getOrCreateUser(ctx, next) {
         lastName: tg.last_name || '',
         referralCode: code,
       });
+      ctx.isNewUser = true;
     } else {
       const now = Date.now();
       const lastSaved = _lastSavedAt.get(tg.id) || 0;

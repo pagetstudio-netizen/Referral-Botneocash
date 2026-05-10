@@ -21,7 +21,7 @@ const LOGO_PATH = join(__dirname, '../assets/logo.png');
 export async function startCommand(ctx) {
   const tg = ctx.from;
   const args = ctx.payload || ctx.message?.text?.split(' ')[1] || '';
-  const isNewUser = !ctx.dbUser?.createdAt || (Date.now() - new Date(ctx.dbUser.createdAt).getTime()) < 3000;
+  const isNewUser = !!ctx.isNewUser;
 
   // ─── Traitement parrainage ────────────────────────────────────────────────────
   if (args && isNewUser && ctx.dbUser) {
