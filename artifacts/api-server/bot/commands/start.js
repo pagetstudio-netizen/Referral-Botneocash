@@ -23,7 +23,7 @@ export async function startCommand(ctx) {
 
   // ─── Traitement parrainage ────────────────────────────────────────────────────
   if (args && isNewUser && ctx.dbUser) {
-    await processReferral(ctx.dbUser, args);
+    await processReferral(ctx.dbUser, args, ctx.telegram, ctx.botInfo?.username);
   }
 
   const caption = await welcomeMessage(tg.first_name);
@@ -60,7 +60,7 @@ export async function startCommand(ctx) {
   }
 }
 
-async function processReferral(newUser, referralCodeOrId) {
+async function processReferral(newUser, referralCodeOrId, telegram, botUsername) {
   try {
     if (newUser.referredBy) return;
 
@@ -107,6 +107,45 @@ async function processReferral(newUser, referralCodeOrId) {
       referredId: newUser.telegramId,
       bonus,
     });
+
+    // ─── Notification au parrain ───────────────────────────────────────────────
+    if (telegram) {
+      try {
+        const referralLink = botUsername
+          ? `https://t.me/${botUsername}?start=${referrer.referralCode || referrer.telegramId}`
+          : null;
+
+        const shareText = encodeURIComponent(
+          `🤑 Rejoins NeoCash et gagne de l'argent gratuitement ! Bonus quotidien + parrainage en FCFA.`
+        );
+        const shareUrl = referralLink
+          ? `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`
+          : null;
+
+        const notifText =
+          `🎉 *Félicitations ${referrer.firstName} !*\n\n` +
+          `💸 Vous venez de gagner *${bonus} FCFA* !\n\n` +
+          `👤 *${newUser.firstName}* vient de rejoindre NeoCash grâce à votre lien de parrainage.\n\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `💰 Bonus crédité : *+${bonus} FCFA*\n` +
+          `👥 Total filleuls : *${referrer.referralCount}*\n` +
+          `💳 Nouveau solde : *${referrer.balance.toLocaleString('fr-FR')} FCFA*\n` +
+          `━━━━━━━━━━━━━━━━━━\n\n` +
+          `📲 Partagez encore votre lien pour gagner plus !`;
+
+        const buttons = [];
+        if (shareUrl) {
+          buttons.push([{ text: '📤 Partager encore', url: shareUrl }]);
+        }
+
+        await telegram.sendMessage(referrer.telegramId, notifText, {
+          parse_mode: 'Markdown',
+          reply_markup: buttons.length ? { inline_keyboard: buttons } : undefined,
+        });
+      } catch (notifErr) {
+        logger.warn('Referral notification failed', { err: notifErr.message });
+      }
+    }
   } catch (err) {
     logger.error('processReferral error', { err: err.message });
   }
