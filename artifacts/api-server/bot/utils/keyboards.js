@@ -25,14 +25,26 @@ export function verifyKeyboard(joinUrl, verifyCallback = 'verify_channel') {
 export function multiChannelVerifyKeyboard(channels) {
   const rows = channels.map(ch => {
     const label = ch.label || (ch.type === 'website' ? '🌐 Visiter le site' : '📢 Rejoindre');
-    const url = ch.type === 'website'
-      ? ch.chatIdOrUrl
-      : ch.chatIdOrUrl.toString().startsWith('-')
-        ? null
-        : `https://t.me/${ch.chatIdOrUrl.replace('@', '')}`;
-    if (url) return [Markup.button.url(label, url)];
-    return [];
-  }).filter(r => r.length > 0);
+    let url;
+    if (ch.type === 'website') {
+      url = ch.chatIdOrUrl;
+    } else {
+      const idStr = ch.chatIdOrUrl.toString().trim();
+      if (idStr.startsWith('http')) {
+        url = idStr;
+      } else if (idStr.startsWith('-100')) {
+        // Supergroupe / canal privé — format t.me/c/
+        url = `https://t.me/c/${idStr.replace('-100', '')}`;
+      } else if (idStr.startsWith('-')) {
+        // Ancien groupe
+        url = `https://t.me/c/${idStr.slice(1)}`;
+      } else {
+        // @username ou username simple
+        url = `https://t.me/${idStr.replace('@', '')}`;
+      }
+    }
+    return [Markup.button.url(label, url)];
+  });
 
   rows.push([Markup.button.callback('✅ Vérifier mon accès', 'verify_channel')]);
   return Markup.inlineKeyboard(rows);

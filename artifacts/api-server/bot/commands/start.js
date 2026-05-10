@@ -6,11 +6,13 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import Referral from '../models/Referral.js';
+import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting } from '../models/Settings.js';
-import { welcomeMessage } from '../utils/messages.js';
-import { mainKeyboard } from '../utils/keyboards.js';
+import { welcomeMessage, multiChannelVerifyMessage } from '../utils/messages.js';
+import { mainKeyboard, multiChannelVerifyKeyboard } from '../utils/keyboards.js';
 import { notifyAdmins } from '../utils/notify.js';
 import { creditPendingReferral } from '../utils/creditReferral.js';
+import { isUserAdmin, getMissingChannels } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +26,25 @@ export async function startCommand(ctx) {
   // ─── Traitement parrainage ────────────────────────────────────────────────────
   if (args && isNewUser && ctx.dbUser) {
     await processReferral(ctx.dbUser, args, ctx.telegram, ctx.botInfo?.username);
+  }
+
+  // ─── Vérification canaux obligatoires avant le message de bienvenue ───────────
+  const adminUser = await isUserAdmin(tg.id);
+  if (!adminUser) {
+    try {
+      const channels = await RequiredChannel.findAll();
+      if (channels.length > 0) {
+        const missing = await getMissingChannels(ctx.telegram, tg.id, channels);
+        if (missing.length > 0) {
+          return ctx.reply(multiChannelVerifyMessage(missing), {
+            parse_mode: 'Markdown',
+            ...multiChannelVerifyKeyboard(missing),
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn('startCommand channel check error', { err: err.message });
+    }
   }
 
   const caption = await welcomeMessage(tg.first_name);
