@@ -1,0 +1,307 @@
+/**
+ * Handler — Retrait Multi-étapes
+ * Flow: pays → opérateur → numéro → montant → récapitulatif → confirmation
+ */
+import Withdrawal from '../models/Withdrawal.js';
+import Transaction from '../models/Transaction.js';
+import { getSetting } from '../models/Settings.js';
+import { getCountry, getOperators } from '../utils/countries.js';
+import { withdrawSummaryMessage, formatAmount } from '../utils/messages.js';
+import {
+  countriesKeyboard,
+  operatorsKeyboard,
+  confirmWithdrawKeyboard,
+  withdrawalAdminKeyboard,
+  mainKeyboard,
+} from '../utils/keyboards.js';
+import { notifyAdmins, notifyUser } from '../utils/notify.js';
+import logger from '../utils/logger.js';
+
+// Sessions en mémoire pour le flux multi-étapes
+const withdrawalSessions = new Map();
+
+const STEP = {
+  COUNTRY: 'country',
+  OPERATOR: 'operator',
+  PHONE: 'phone',
+  AMOUNT: 'amount',
+  CONFIRM: 'confirm',
+};
+
+// ─── Démarrer le flux retrait ─────────────────────────────────────────────────
+export async function handleWithdrawal(ctx) {
+  const user = ctx.dbUser;
+  if (!user) return;
+
+  const minWithdraw = await getSetting('min_withdraw') || 800;
+
+  if (user.balance < minWithdraw) {
+    return ctx.reply(
+      `💸 *RETRAIT INDISPONIBLE*\n\n━━━━━━━━━━━━━━━━━━\n💰 Solde actuel : *${formatAmount(user.balance)}*\n⚠️ Minimum requis : *${formatAmount(minWithdraw)}*\n━━━━━━━━━━━━━━━━━━\n\n👥 Invite des amis pour augmenter ton solde !`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+
+  withdrawalSessions.set(user.telegramId, { step: STEP.COUNTRY });
+
+  await ctx.reply(
+    `💸 *DEMANDE DE RETRAIT*\n\n━━━━━━━━━━━━━━━━━━\n💰 Solde disponible : *${formatAmount(user.balance)}*\n\n🌍 Sélectionne ton pays :`,
+    { parse_mode: 'Markdown', ...countriesKeyboard() }
+  );
+}
+
+// ─── Sélection pays ───────────────────────────────────────────────────────────
+export async function handleCountrySelect(ctx, countryCode) {
+  const country = getCountry(countryCode);
+  if (!country) return ctx.answerCbQuery('Pays invalide');
+
+  const userId = ctx.from.id;
+  const session = withdrawalSessions.get(userId) || {};
+  session.country = countryCode;
+  session.countryName = country.name;
+  session.step = STEP.OPERATOR;
+  withdrawalSessions.set(userId, session);
+
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    `💸 *RETRAIT — OPÉRATEUR*\n\n🌍 Pays : *${country.name}*\n\n📱 Sélectionne ton opérateur :`,
+    { parse_mode: 'Markdown', ...operatorsKeyboard(country.operators, countryCode) }
+  );
+}
+
+// ─── Sélection opérateur ──────────────────────────────────────────────────────
+export async function handleOperatorSelect(ctx, countryCode, operator) {
+  const userId = ctx.from.id;
+  const session = withdrawalSessions.get(userId);
+  if (!session) return ctx.answerCbQuery('Session expirée');
+
+  session.operator = operator;
+  session.step = STEP.PHONE;
+  withdrawalSessions.set(userId, session);
+
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    `💸 *RETRAIT — NUMÉRO*\n\n🌍 Pays : *${session.countryName}*\n📱 Opérateur : *${operator}*\n\n📞 Envoie ton numéro Mobile Money :`,
+    { parse_mode: 'Markdown' }
+  );
+}
+
+// ─── Retour à la sélection pays ───────────────────────────────────────────────
+export async function handleBackToCountries(ctx) {
+  const userId = ctx.from.id;
+  const session = withdrawalSessions.get(userId) || {};
+  session.step = STEP.COUNTRY;
+  withdrawalSessions.set(userId, session);
+  await ctx.answerCbQuery();
+  await ctx.editMessageText('🌍 Sélectionne ton pays :', {
+    parse_mode: 'Markdown',
+    ...countriesKeyboard(),
+  });
+}
+
+// ─── Annuler le retrait ────────────────────────────────────────────────────────
+export async function handleCancelWithdrawal(ctx) {
+  withdrawalSessions.delete(ctx.from?.id);
+  await ctx.answerCbQuery('Retrait annulé').catch(() => {});
+  await ctx.reply('❌ Retrait annulé.', mainKeyboard).catch(() => {});
+}
+
+// ─── Confirmer le retrait ──────────────────────────────────────────────────────
+export async function handleConfirmWithdrawal(ctx) {
+  const userId = ctx.from.id;
+  const session = withdrawalSessions.get(userId);
+  if (!session || session.step !== STEP.CONFIRM) {
+    await ctx.answerCbQuery('Session expirée');
+    return;
+  }
+
+  const user = ctx.dbUser;
+  const minWithdraw = await getSetting('min_withdraw') || 800;
+
+  if (user.balance < session.amount) {
+    await ctx.answerCbQuery('Solde insuffisant');
+    withdrawalSessions.delete(userId);
+    return ctx.reply('❌ Solde insuffisant pour effectuer ce retrait.', mainKeyboard);
+  }
+  if (session.amount < minWithdraw) {
+    await ctx.answerCbQuery('Montant trop faible');
+    withdrawalSessions.delete(userId);
+    return ctx.reply(`❌ Montant minimum : ${formatAmount(minWithdraw)}`, mainKeyboard);
+  }
+
+  try {
+    const balBefore = user.balance;
+    user.balance -= session.amount;
+    user.totalWithdrawn += session.amount;
+    await user.save();
+
+    const wd = await Withdrawal.create({
+      userId: user.telegramId,
+      telegramId: user.telegramId,
+      firstName: user.firstName,
+      username: user.username,
+      country: session.country,
+      countryName: session.countryName,
+      operator: session.operator,
+      phone: session.phone,
+      amount: session.amount,
+    });
+
+    await Transaction.create({
+      userId: user.telegramId,
+      type: 'withdrawal',
+      amount: -session.amount,
+      balanceBefore: balBefore,
+      balanceAfter: user.balance,
+      description: `Retrait ${session.operator}`,
+      referenceId: wd._id.toString(),
+    });
+
+    withdrawalSessions.delete(userId);
+
+    await ctx.answerCbQuery('✅ Demande envoyée !');
+    await ctx.editMessageText(
+      `⏳ *DEMANDE ENVOYÉE !*\n\n━━━━━━━━━━━━━━━━━━\n✅ Ta demande de retrait a été enregistrée.\n💰 Montant : *${formatAmount(session.amount)}*\n📱 Opérateur : *${session.operator}*\n\nL'admin la traitera bientôt.\n━━━━━━━━━━━━━━━━━━\n💰 Nouveau solde : *${formatAmount(user.balance)}*`,
+      { parse_mode: 'Markdown' }
+    );
+
+    // Notifier les admins
+    const notifText = `💸 *NOUVELLE DEMANDE DE RETRAIT*\n\n👤 ${user.firstName} ${user.lastName || ''}\n🆔 \`${user.telegramId}\`\n📛 ${user.username ? '@' + user.username : 'N/A'}\n\n🌍 Pays : ${session.countryName}\n📱 Opérateur : ${session.operator}\n📞 Numéro : \`${session.phone}\`\n💰 Montant : *${formatAmount(session.amount)}*\n🔖 ID : \`${wd._id}\``;
+
+    await notifyAdmins(ctx.telegram, {
+      text: notifText,
+      extra: { reply_markup: withdrawalAdminKeyboard(wd._id).reply_markup },
+    });
+
+    logger.info('Withdrawal created', { userId, amount: session.amount, wdId: wd._id });
+  } catch (err) {
+    logger.error('handleConfirmWithdrawal error', { err: err.message });
+    await ctx.reply('❌ Erreur lors du traitement. Contacte le support.', mainKeyboard);
+  }
+}
+
+// ─── Traitement des messages texte dans le flux retrait ────────────────────────
+export async function handleWithdrawalTextInput(ctx) {
+  const userId = ctx.from.id;
+  const session = withdrawalSessions.get(userId);
+  if (!session) return false;
+
+  const text = ctx.message.text.trim();
+
+  if (session.step === STEP.PHONE) {
+    // Validation numéro de téléphone
+    const phoneClean = text.replace(/[\s\-\.]/g, '');
+    if (!/^\+?[\d]{8,15}$/.test(phoneClean)) {
+      await ctx.reply('⚠️ Numéro invalide. Envoie un numéro valide (ex: +22890123456) :');
+      return true;
+    }
+    session.phone = phoneClean;
+    session.step = STEP.AMOUNT;
+    withdrawalSessions.set(userId, session);
+
+    const minWithdraw = await getSetting('min_withdraw') || 800;
+    await ctx.reply(
+      `💸 *RETRAIT — MONTANT*\n\n📞 Numéro : \`${phoneClean}\`\n\n💰 Combien veux-tu retirer ?\n⚠️ Minimum : *${formatAmount(minWithdraw)}*\n💵 Disponible : *${formatAmount(ctx.dbUser.balance)}*`,
+      { parse_mode: 'Markdown' }
+    );
+    return true;
+  }
+
+  if (session.step === STEP.AMOUNT) {
+    const amount = parseInt(text.replace(/\s/g, ''), 10);
+    const user = ctx.dbUser;
+    const minWithdraw = await getSetting('min_withdraw') || 800;
+
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply('⚠️ Montant invalide. Entre un nombre entier positif :');
+      return true;
+    }
+    if (amount < minWithdraw) {
+      await ctx.reply(`⚠️ Montant minimum : *${formatAmount(minWithdraw)}*\n\nEntre un montant valide :`, { parse_mode: 'Markdown' });
+      return true;
+    }
+    if (amount > user.balance) {
+      await ctx.reply(`⚠️ Solde insuffisant !\n\n💵 Disponible : *${formatAmount(user.balance)}*`, { parse_mode: 'Markdown' });
+      return true;
+    }
+
+    session.amount = amount;
+    session.step = STEP.CONFIRM;
+    withdrawalSessions.set(userId, session);
+
+    await ctx.reply(withdrawSummaryMessage(session), {
+      parse_mode: 'Markdown',
+      ...confirmWithdrawKeyboard,
+    });
+    return true;
+  }
+
+  return false;
+}
+
+// ─── Admin: Valider un retrait ─────────────────────────────────────────────────
+export async function adminApproveWithdrawal(ctx, withdrawalId) {
+  try {
+    const wd = await Withdrawal.findById(withdrawalId);
+    if (!wd) return ctx.answerCbQuery('Retrait introuvable');
+    if (wd.status !== 'pending') return ctx.answerCbQuery('Déjà traité');
+
+    wd.status = 'approved';
+    wd.processedAt = new Date();
+    wd.processedBy = ctx.from.id;
+    await wd.save();
+
+    await ctx.answerCbQuery('✅ Validé !');
+    await ctx.editMessageText(
+      ctx.callbackQuery.message.text + '\n\n✅ *VALIDÉ PAR ADMIN*',
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+
+    await notifyUser(
+      ctx.telegram,
+      wd.telegramId,
+      `✅ *RETRAIT APPROUVÉ !*\n\n━━━━━━━━━━━━━━━━━━\n💰 Montant : *${formatAmount(wd.amount)}*\n📱 Opérateur : *${wd.operator}*\n📞 Numéro : \`${wd.phone}\`\n\n🎉 Ton paiement a été effectué !`,
+    );
+  } catch (err) {
+    logger.error('adminApproveWithdrawal error', { err: err.message });
+    ctx.answerCbQuery('Erreur').catch(() => {});
+  }
+}
+
+// ─── Admin: Refuser un retrait ─────────────────────────────────────────────────
+export async function adminRejectWithdrawal(ctx, withdrawalId) {
+  try {
+    const wd = await Withdrawal.findById(withdrawalId);
+    if (!wd) return ctx.answerCbQuery('Retrait introuvable');
+    if (wd.status !== 'pending') return ctx.answerCbQuery('Déjà traité');
+
+    // Rembourser l'utilisateur
+    const User = (await import('../models/User.js')).default;
+    const user = await User.findOne({ telegramId: wd.telegramId });
+    if (user) {
+      user.balance += wd.amount;
+      user.totalWithdrawn -= wd.amount;
+      await user.save();
+    }
+
+    wd.status = 'rejected';
+    wd.processedAt = new Date();
+    wd.processedBy = ctx.from.id;
+    await wd.save();
+
+    await ctx.answerCbQuery('❌ Refusé');
+    await ctx.editMessageText(
+      ctx.callbackQuery.message.text + '\n\n❌ *REFUSÉ PAR ADMIN*',
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+
+    await notifyUser(
+      ctx.telegram,
+      wd.telegramId,
+      `❌ *RETRAIT REFUSÉ*\n\n━━━━━━━━━━━━━━━━━━\n💰 Montant : *${formatAmount(wd.amount)}*\n\n🔄 Ton solde a été remboursé.\nContacte le support si tu as des questions.`,
+    );
+  } catch (err) {
+    logger.error('adminRejectWithdrawal error', { err: err.message });
+    ctx.answerCbQuery('Erreur').catch(() => {});
+  }
+}
