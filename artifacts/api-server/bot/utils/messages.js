@@ -115,6 +115,7 @@ export function withdrawSummaryMessage(data) {
 ━━━━━━━━━━━━━━━━━━
 🌍 Pays : *${data.countryName}*
 📱 Opérateur : *${data.operator}*
+👤 Bénéficiaire : *${data.beneficiaryName}*
 💰 Montant : *${formatAmount(data.amount)}*
 📞 Numéro : \`${data.phone}\`
 ━━━━━━━━━━━━━━━━━━

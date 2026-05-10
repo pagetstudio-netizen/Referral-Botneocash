@@ -10,6 +10,7 @@ class WithdrawalRecord {
     this.userId = Number(row.user_id);
     this.telegramId = Number(row.telegram_id);
     this.firstName = row.first_name;
+    this.beneficiaryName = row.beneficiary_name ?? '';
     this.username = row.username;
     this.country = row.country;
     this.countryName = row.country_name;
@@ -42,11 +43,11 @@ const Withdrawal = {
   async create(data) {
     const row = await queryOne(
       `INSERT INTO withdrawals
-        (user_id, telegram_id, first_name, username, country, country_name, operator, phone, amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (user_id, telegram_id, first_name, beneficiary_name, username, country, country_name, operator, phone, amount)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        RETURNING *`,
-      [data.userId, data.telegramId, data.firstName ?? '', data.username ?? null,
-       data.country, data.countryName, data.operator, data.phone, data.amount]
+      [data.userId, data.telegramId, data.firstName ?? '', data.beneficiaryName ?? '',
+       data.username ?? null, data.country, data.countryName, data.operator, data.phone, data.amount]
     );
     return toRecord(row);
   },

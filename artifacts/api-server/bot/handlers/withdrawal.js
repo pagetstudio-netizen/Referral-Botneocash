@@ -23,7 +23,7 @@ import logger from '../utils/logger.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGO_PATH = join(__dirname, '../assets/logo.png');
 
-// Masque le numéro : +22507123456 → +225 07 XX XX 56
+// Masque le numéro : +22507123456 → +225 07X XX XX 56 (garde début + 2 derniers chiffres)
 function maskPhone(phone) {
   const clean = phone.replace(/\s/g, '');
   if (clean.length < 6) return clean;
@@ -31,12 +31,22 @@ function maskPhone(phone) {
   const visible_end   = clean.slice(-2);
   const hidden_count  = clean.length - visible_start.length - visible_end.length;
   const hidden        = 'X'.repeat(hidden_count);
-  // Reformater en groupes de 2 : +225 07 XX XX XX 56
   const all = visible_start + hidden + visible_end;
   const prefix = all.startsWith('+') ? '+' : '';
   const digits = all.replace('+', '');
   const groups = digits.match(/.{1,2}/g) || [digits];
   return prefix + groups.join(' ');
+}
+
+// Masque le nom : "Kikou" → "K***ou", "Jean" → "J**n", "Al" → "A*"
+function maskName(name) {
+  if (!name) return '***';
+  const trimmed = name.trim();
+  if (trimmed.length <= 1) return trimmed + '*';
+  if (trimmed.length === 2) return trimmed[0] + '*';
+  if (trimmed.length === 3) return trimmed[0] + '**';
+  // 4+ chars : premier + *** + 2 derniers
+  return trimmed[0] + '***' + trimmed.slice(-2);
 }
 
 // Sessions en mémoire pour le flux multi-étapes
@@ -46,6 +56,7 @@ const STEP = {
   COUNTRY: 'country',
   OPERATOR: 'operator',
   PHONE: 'phone',
+  BENEFICIARY_NAME: 'beneficiary_name',
   AMOUNT: 'amount',
   CONFIRM: 'confirm',
 };
@@ -161,6 +172,7 @@ export async function handleConfirmWithdrawal(ctx) {
       userId: user.telegramId,
       telegramId: user.telegramId,
       firstName: user.firstName,
+      beneficiaryName: session.beneficiaryName || '',
       username: user.username,
       country: session.country,
       countryName: session.countryName,
@@ -203,7 +215,7 @@ export async function handleConfirmWithdrawal(ctx) {
     const pendingCaption =
       `⏳ *RETRAIT EN COURS*\n\n` +
       `🔍 Statut : *En attente* ⏳\n` +
-      `👤 Bénéficiaire : *${user.firstName}*\n` +
+      `👤 Bénéficiaire : *${maskName(session.beneficiaryName || user.firstName)}*\n` +
       `💰 Montant : *${formatAmount(session.amount)}*\n` +
       `📱 Opérateur : *${session.operator}*\n` +
       `📞 Numéro : \`${maskPhone(session.phone)}\`\n` +
@@ -241,12 +253,28 @@ export async function handleWithdrawalTextInput(ctx) {
       return true;
     }
     session.phone = phoneClean;
+    session.step = STEP.BENEFICIARY_NAME;
+    withdrawalSessions.set(userId, session);
+
+    await ctx.reply(
+      `💸 *RETRAIT — NOM DU BÉNÉFICIAIRE*\n\n📞 Numéro : \`${phoneClean}\`\n\n👤 Entre le *nom complet* du titulaire du compte Mobile Money :`,
+      { parse_mode: 'Markdown' }
+    );
+    return true;
+  }
+
+  if (session.step === STEP.BENEFICIARY_NAME) {
+    if (text.length < 2 || text.length > 60) {
+      await ctx.reply('⚠️ Nom invalide. Entre un nom entre 2 et 60 caractères :');
+      return true;
+    }
+    session.beneficiaryName = text;
     session.step = STEP.AMOUNT;
     withdrawalSessions.set(userId, session);
 
     const minWithdraw = await getSetting('min_withdraw') || 800;
     await ctx.reply(
-      `💸 *RETRAIT — MONTANT*\n\n📞 Numéro : \`${phoneClean}\`\n\n💰 Combien veux-tu retirer ?\n⚠️ Minimum : *${formatAmount(minWithdraw)}*\n💵 Disponible : *${formatAmount(ctx.dbUser.balance)}*`,
+      `💸 *RETRAIT — MONTANT*\n\n📞 Numéro : \`${session.phone}\`\n👤 Bénéficiaire : *${text}*\n\n💰 Combien veux-tu retirer ?\n⚠️ Minimum : *${formatAmount(minWithdraw)}*\n💵 Disponible : *${formatAmount(ctx.dbUser.balance)}*`,
       { parse_mode: 'Markdown' }
     );
     return true;
@@ -319,7 +347,7 @@ export async function adminApproveWithdrawal(ctx, withdrawalId) {
       const approvedCaption =
         `✅ *PAIEMENT EFFECTUÉ*\n\n` +
         `🔍 Statut : Payé ✅\n` +
-        `👤 Bénéficiaire : *${wd.firstName}*\n` +
+        `👤 Bénéficiaire : *${maskName(wd.beneficiaryName || wd.firstName)}*\n` +
         `💰 Montant : *${formatAmount(wd.amount)}*\n` +
         `📱 Opérateur : *${wd.operator}*\n` +
         `📞 Numéro : \`${maskPhone(wd.phone)}\`\n` +

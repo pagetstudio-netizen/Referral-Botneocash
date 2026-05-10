@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
 
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS beneficiary_name TEXT NOT NULL DEFAULT '';
+
 CREATE TABLE IF NOT EXISTS referrals (
   id BIGSERIAL PRIMARY KEY,
   referrer_id BIGINT NOT NULL,
