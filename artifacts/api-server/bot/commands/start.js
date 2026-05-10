@@ -106,7 +106,7 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
     await newUser.save();
 
     // Créer le parrainage en attente (pending) — validé après vérification canal
-    await Referral.create({
+    const referral = await Referral.create({
       referrerId: referrer.telegramId,
       referredId: newUser.telegramId,
       referredUsername: newUser.username,
@@ -121,8 +121,23 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
       bonus,
     });
 
+    // ─── Notification immédiate au parrain (lien cliqué) ─────────────────────
+    if (telegram && referral) {
+      try {
+        await telegram.sendMessage(
+          referrer.telegramId,
+          `🔔 *Quelqu'un a cliqué sur ton lien !*\n\n` +
+          `👤 *${newUser.firstName}* vient d'utiliser ton lien de parrainage.\n\n` +
+          `⏳ En attente de vérification des canaux...\n` +
+          `💰 Tu gagneras *${bonus} FCFA* dès que la vérification sera validée.`,
+          { parse_mode: 'Markdown' }
+        );
+      } catch (notifErr) {
+        logger.warn('Pending referral notification failed', { err: notifErr.message });
+      }
+    }
+
     // Vérifier si des canaux obligatoires sont configurés
-    const { default: RequiredChannel } = await import('../models/RequiredChannel.js');
     const channels = await RequiredChannel.findAll();
 
     if (!channels.length) {
@@ -132,7 +147,6 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
     }
 
     // Canaux configurés : vérifier si le filleul est déjà membre de tous
-    const { getMissingChannels } = await import('../middleware/auth.js');
     try {
       const missing = await getMissingChannels(telegram, newUser.telegramId, channels);
       if (missing.length === 0) {
