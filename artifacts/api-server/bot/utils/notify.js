@@ -6,8 +6,6 @@ import logger from './logger.js';
 
 /**
  * Envoyer une notification à tous les admins
- * @param {Object} telegram - Instance telegram du bot
- * @param {Object} options - { type, text, extra }
  */
 export async function notifyAdmins(telegram, { text, extra = {} }) {
   try {
@@ -37,7 +35,11 @@ export async function notifyAdmins(telegram, { text, extra = {} }) {
 export async function notifyWithdrawalChannel(telegram, text, extra = {}) {
   try {
     const channelId = await getSetting('withdrawal_channel');
-    if (!channelId) return;
+    if (!channelId) {
+      logger.warn('notifyWithdrawalChannel: withdrawal_channel non configuré — notification ignorée');
+      return;
+    }
+    logger.info('notifyWithdrawalChannel: envoi vers canal', { channelId });
     await telegram.sendMessage(channelId, text, {
       parse_mode: 'Markdown',
       ...extra,
@@ -51,22 +53,22 @@ export async function notifyWithdrawalChannel(telegram, text, extra = {}) {
 
 /**
  * Envoyer une notification avec photo dans le canal de retrait
- * @param {Object} telegram - Instance telegram
- * @param {import('stream').ReadStream|string} photo - Flux ou file_id de la photo
- * @param {string} caption - Légende (texte Markdown)
- * @param {Object} extra - Options supplémentaires (boutons, etc.)
  */
 export async function notifyWithdrawalChannelPhoto(telegram, photo, caption, extra = {}) {
   try {
     const channelId = await getSetting('withdrawal_channel');
-    if (!channelId) return;
+    if (!channelId) {
+      logger.warn('notifyWithdrawalChannelPhoto: withdrawal_channel non configuré — notification ignorée');
+      return;
+    }
+    logger.info('notifyWithdrawalChannelPhoto: envoi photo vers canal', { channelId });
     await telegram.sendPhoto(channelId, photo, {
       caption,
       parse_mode: 'Markdown',
       ...extra,
-    }).catch((err) =>
-      logger.warn('notifyWithdrawalChannelPhoto send failed', { channelId, err: err.message })
-    );
+    }).catch((err) => {
+      logger.warn('notifyWithdrawalChannelPhoto send failed', { channelId, err: err.message });
+    });
   } catch (err) {
     logger.error('notifyWithdrawalChannelPhoto error', { err: err.message });
   }
