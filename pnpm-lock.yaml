@@ -376,6 +376,10 @@ importers:
       telegraf:
         specifier: ^4.16.3
         version: 4.16.3
+    devDependencies:
+      esbuild:
+        specifier: ^0.27.3
+        version: 0.27.3
 
   artifacts/mockup-sandbox:
     devDependencies:
