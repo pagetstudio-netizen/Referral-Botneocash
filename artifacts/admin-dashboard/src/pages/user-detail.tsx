@@ -63,7 +63,7 @@ export default function UserDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-48" />
           <div className="h-64 bg-gray-200 rounded-xl" />
@@ -74,8 +74,8 @@ export default function UserDetail() {
 
   if (error || !user) {
     return (
-      <div className="p-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm">
           Utilisateur introuvable
         </div>
         <button onClick={() => navigate("/users")} className="mt-4 text-sm text-blue-600 hover:underline">
@@ -86,8 +86,8 @@ export default function UserDetail() {
   }
 
   return (
-    <div className="p-8 max-w-4xl">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl">
+      <div className="flex items-center gap-3 mb-5 sm:mb-6">
         <button onClick={() => navigate("/users")} className="text-sm text-gray-500 hover:text-gray-700">
           Utilisateurs
         </button>
@@ -105,7 +105,7 @@ export default function UserDetail() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Profile */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 p-6">

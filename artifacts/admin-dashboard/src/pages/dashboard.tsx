@@ -16,21 +16,29 @@ interface StatCardProps {
 }
 
 function StatCard({ title, value, sub, color = "blue" }: StatCardProps) {
-  const colors: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-700",
-    green: "bg-green-50 text-green-700",
-    amber: "bg-amber-50 text-amber-700",
-    red: "bg-red-50 text-red-700",
-    purple: "bg-purple-50 text-purple-700",
-    gray: "bg-gray-50 text-gray-700",
+  const textColors: Record<string, string> = {
+    blue: "text-gray-900",
+    green: "text-green-700",
+    amber: "text-amber-700",
+    red: "text-red-700",
+    purple: "text-purple-700",
+    gray: "text-gray-700",
+  };
+  const bgColors: Record<string, string> = {
+    blue: "border-gray-200",
+    green: "border-green-100",
+    amber: "border-amber-100",
+    red: "border-red-100",
+    purple: "border-purple-100",
+    gray: "border-gray-200",
   };
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="text-sm font-medium text-gray-500 mb-1">{title}</div>
-      <div className={`text-2xl font-bold ${color === "blue" ? "text-gray-900" : colors[color]?.split(" ")[1] || "text-gray-900"}`}>
+    <div className={`bg-white rounded-xl border p-4 sm:p-5 ${bgColors[color] ?? "border-gray-200"}`}>
+      <div className="text-xs sm:text-sm font-medium text-gray-500 mb-1">{title}</div>
+      <div className={`text-xl sm:text-2xl font-bold ${textColors[color] ?? "text-gray-900"}`}>
         {typeof value === "number" ? fmt(value) : value}
       </div>
-      {sub && <div className="text-xs text-gray-500 mt-1">{sub}</div>}
+      {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
     </div>
   );
 }
@@ -40,13 +48,14 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-xl" />
-            ))}
+          <div className="h-7 bg-gray-200 rounded w-48" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[...Array(6)].map((_, i) => <div key={i} className="h-20 bg-gray-200 rounded-xl" />)}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-gray-200 rounded-xl" />)}
           </div>
         </div>
       </div>
@@ -55,8 +64,8 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="p-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm">
           Erreur de chargement des statistiques
         </div>
       </div>
@@ -64,42 +73,42 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Tableau de bord</h2>
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="mb-5 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900">Tableau de bord</h2>
         <p className="text-sm text-gray-500 mt-0.5">Vue d'ensemble de NeoCash Bot</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Users */}
+      <div className="space-y-5 sm:space-y-6">
+        {/* Utilisateurs */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Utilisateurs</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <StatCard title="Total" value={stats?.users.total ?? 0} />
-            <StatCard title="Aujourd'hui" value={stats?.users.today ?? 0} color="green" />
-            <StatCard title="Cette semaine" value={stats?.users.week ?? 0} color="blue" />
-            <StatCard title="Ce mois" value={stats?.users.month ?? 0} color="purple" />
-            <StatCard title="Actifs (7j)" value={stats?.users.active ?? 0} color="amber" />
-            <StatCard title="Bannis" value={stats?.users.banned ?? 0} color="red" />
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Utilisateurs</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <StatCard title="Total"        value={stats?.users.total ?? 0} />
+            <StatCard title="Aujourd'hui"  value={stats?.users.today ?? 0}  color="green"  />
+            <StatCard title="Cette semaine"value={stats?.users.week ?? 0}   color="blue"   />
+            <StatCard title="Ce mois"      value={stats?.users.month ?? 0}  color="purple" />
+            <StatCard title="Actifs (7j)"  value={stats?.users.active ?? 0} color="amber"  />
+            <StatCard title="Bannis"       value={stats?.users.banned ?? 0} color="red"    />
           </div>
         </div>
 
-        {/* Withdrawals */}
+        {/* Retraits */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Retraits</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Retraits</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <StatCard title="Total demandes" value={stats?.withdrawals.total ?? 0} />
-            <StatCard title="En attente" value={stats?.withdrawals.pending ?? 0} color="amber" />
-            <StatCard title="Valides" value={stats?.withdrawals.approved ?? 0} color="green" />
-            <StatCard title="Refuses" value={stats?.withdrawals.rejected ?? 0} color="red" />
-            <StatCard title="Montant paye" value={fmtFcfa(stats?.withdrawals.totalApprovedAmount ?? 0)} color="green" />
+            <StatCard title="En attente"     value={stats?.withdrawals.pending ?? 0}  color="amber" />
+            <StatCard title="Valides"        value={stats?.withdrawals.approved ?? 0} color="green" />
+            <StatCard title="Refuses"        value={stats?.withdrawals.rejected ?? 0} color="red"   />
+            <StatCard title="Montant paye"   value={fmtFcfa(stats?.withdrawals.totalApprovedAmount ?? 0)} color="green" />
           </div>
         </div>
 
-        {/* Bonuses */}
+        {/* Bonus */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Bonus distribues</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bonus distribues</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard title="Total bonus payes" value={fmtFcfa(stats?.bonuses.total ?? 0)} color="purple" />
           </div>
         </div>

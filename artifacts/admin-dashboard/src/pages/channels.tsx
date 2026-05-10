@@ -83,7 +83,7 @@ export default function Channels() {
   const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Canaux obligatoires</h2>

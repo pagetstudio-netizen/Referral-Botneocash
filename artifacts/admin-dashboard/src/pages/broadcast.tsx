@@ -35,10 +35,12 @@ export default function Broadcast() {
     });
   }
 
+  const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Diffusion globale</h2>
+    <div className="p-4 sm:p-6 md:p-8 max-w-2xl">
+      <div className="mb-5 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900">Diffusion globale</h2>
         <p className="text-sm text-gray-500 mt-0.5">Envoyez un message a tous les utilisateurs actifs</p>
       </div>
 
@@ -50,58 +52,53 @@ export default function Broadcast() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Message
-                <span className="text-gray-400 font-normal ml-1">(Markdown supporte : *gras*, _italique_)</span>
-              </label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={6}
-                required
-                placeholder="Bonjour a tous ! Nous avons une annonce importante..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">{message.length} caracteres</p>
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Message
+            <span className="text-gray-400 font-normal ml-1 text-xs">(Markdown : *gras*, _italique_)</span>
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={6}
+            required
+            placeholder="Bonjour a tous ! Nous avons une annonce importante..."
+            className={`${inputClass} resize-none`}
+          />
+          <p className="text-xs text-gray-400 mt-1">{message.length} caracteres</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-1">Bouton (optionnel)</h3>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="font-semibold text-gray-900 mb-1 text-sm">Bouton (optionnel)</h3>
           <p className="text-xs text-gray-500 mb-4">Ajoutez un bouton cliquable sous votre message</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Texte du bouton</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Texte du bouton</label>
               <input
                 type="text"
                 value={buttonLabel}
                 onChange={(e) => setButtonLabel(e.target.value)}
                 placeholder="Cliquez ici"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">URL du bouton</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">URL du bouton</label>
               <input
                 type="url"
                 value={buttonUrl}
                 onChange={(e) => setButtonUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
               />
             </div>
           </div>
         </div>
 
-        {/* Preview */}
         {message && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Apercu</h3>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm">Apercu</h3>
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <p className="text-sm text-gray-800 whitespace-pre-wrap">{message}</p>
               {buttonLabel && buttonUrl && (
