@@ -1,28 +1,35 @@
-import mongoose from 'mongoose';
+/**
+ * Modèle Notification — PostgreSQL (Supabase)
+ */
+import { queryOne } from '../database/db.js';
 
-const notificationSchema = new mongoose.Schema(
-  {
-    type: {
-      type: String,
-      enum: [
-        'new_user',
-        'withdrawal_request',
-        'withdrawal_approved',
-        'withdrawal_rejected',
-        'user_banned',
-        'new_referral',
-        'broadcast',
-        'error',
-      ],
-      required: true,
-    },
-    message: { type: String, required: true },
-    userId: { type: Number, default: null },
-    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
-    sent: { type: Boolean, default: false },
+class NotificationRecord {
+  constructor(row) {
+    this.id = row.id;
+    this._id = row.id;
+    this.type = row.type;
+    this.message = row.message;
+    this.userId = row.user_id ? Number(row.user_id) : null;
+    this.sent = row.sent;
+    this.sentAt = row.sent_at;
+    this.createdAt = row.created_at;
+  }
+}
+
+function toRecord(row) {
+  return row ? new NotificationRecord(row) : null;
+}
+
+const Notification = {
+  async create(data) {
+    const row = await queryOne(
+      `INSERT INTO notifications (type, message, user_id, sent)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [data.type, data.message ?? '', data.userId ?? null, data.sent ?? false]
+    );
+    return toRecord(row);
   },
-  { timestamps: true }
-);
+};
 
-const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;

@@ -1,34 +1,26 @@
-import mongoose from 'mongoose';
+/**
+ * Connexion Supabase (PostgreSQL) + initialisation du schéma
+ */
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { getPool } from './db.js';
+import logger from '../utils/logger.js';
 
-let isConnected = false;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-async function connectDB() {
-  if (isConnected) return;
+export default async function connectDB() {
+  const url = process.env.SUPABASE_DB_URL;
+  if (!url) throw new Error('SUPABASE_DB_URL non définie dans les variables d\'environnement');
 
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error('MONGODB_URI non définie dans les variables d\'environnement');
-  }
+  const pool = getPool();
 
-  try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
-    });
-    isConnected = true;
-    console.log('✅ MongoDB connecté avec succès');
-  } catch (err) {
-    console.error('❌ Erreur connexion MongoDB:', err.message);
-    process.exit(1);
-  }
+  // Test de connexion
+  await pool.query('SELECT NOW()');
+  logger.info('✅ Connecté à Supabase (PostgreSQL)');
+
+  // Initialisation du schéma (CREATE IF NOT EXISTS — idempotent)
+  const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
+  await pool.query(schema);
+  logger.info('✅ Schéma PostgreSQL initialisé');
 }
-
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️ MongoDB déconnecté — tentative de reconnexion...');
-  isConnected = false;
-});
-
-mongoose.connection.on('error', (err) => {
-  console.error('❌ Erreur MongoDB:', err.message);
-});
-
-export default connectDB;

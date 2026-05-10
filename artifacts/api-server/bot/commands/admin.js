@@ -48,6 +48,8 @@ export async function handleAdminStats(ctx) {
     approvedWd,
     rejectedWd,
     pendingWd,
+    wdStats,
+    bonusTotal,
   ] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: startOfDay } }),
@@ -58,19 +60,9 @@ export async function handleAdminStats(ctx) {
     Withdrawal.countDocuments({ status: 'approved' }),
     Withdrawal.countDocuments({ status: 'rejected' }),
     Withdrawal.countDocuments({ status: 'pending' }),
+    Withdrawal.sumByStatus(),
+    Transaction.sumBonuses(),
   ]);
-
-  const wdAmounts = await Withdrawal.aggregate([
-    { $group: { _id: '$status', total: { $sum: '$amount' } } },
-  ]);
-  const wdStats = {};
-  wdAmounts.forEach((w) => (wdStats[w._id] = w.total));
-
-  const totalBonuses = await Transaction.aggregate([
-    { $match: { type: { $in: ['daily_bonus', 'referral_bonus'] } } },
-    { $group: { _id: null, total: { $sum: '$amount' } } },
-  ]);
-  const bonusTotal = totalBonuses[0]?.total || 0;
 
   const text = `📊 *STATISTIQUES NEOCASH*
 
@@ -370,7 +362,7 @@ export async function handleAdminInput(ctx) {
 // ─── Diffusion globale ────────────────────────────────────────────────────────
 export async function executeBroadcast(ctx, session) {
   await ctx.answerCbQuery('📢 Diffusion en cours...').catch(() => {});
-  const users = await User.find({ banned: false }).select('telegramId');
+  const users = await User.find({ banned: false }).limit(500000);
   let sent = 0, failed = 0;
 
   for (const user of users) {

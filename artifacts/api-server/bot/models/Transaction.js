@@ -1,21 +1,47 @@
-import mongoose from 'mongoose';
+/**
+ * Modèle Transaction — PostgreSQL (Supabase)
+ */
+import { queryOne, queryScalar } from '../database/db.js';
 
-const transactionSchema = new mongoose.Schema(
-  {
-    userId: { type: Number, required: true, index: true },
-    type: {
-      type: String,
-      enum: ['referral_bonus', 'daily_bonus', 'withdrawal', 'admin_credit', 'admin_debit'],
-      required: true,
-    },
-    amount: { type: Number, required: true },
-    balanceBefore: { type: Number, default: 0 },
-    balanceAfter: { type: Number, default: 0 },
-    description: { type: String, default: '' },
-    referenceId: { type: String, default: null },
+class TransactionRecord {
+  constructor(row) {
+    this.id = row.id;
+    this._id = row.id;
+    this.userId = Number(row.user_id);
+    this.type = row.type;
+    this.amount = row.amount;
+    this.balanceBefore = row.balance_before;
+    this.balanceAfter = row.balance_after;
+    this.description = row.description;
+    this.referenceId = row.reference_id;
+    this.createdAt = row.created_at;
+  }
+}
+
+function toRecord(row) {
+  return row ? new TransactionRecord(row) : null;
+}
+
+const Transaction = {
+  async create(data) {
+    const row = await queryOne(
+      `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, description, reference_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING *`,
+      [data.userId, data.type, data.amount,
+       data.balanceBefore ?? 0, data.balanceAfter ?? 0,
+       data.description ?? '', data.referenceId ?? null]
+    );
+    return toRecord(row);
   },
-  { timestamps: true }
-);
 
-const Transaction = mongoose.model('Transaction', transactionSchema);
+  // Remplace Transaction.aggregate pour la somme des bonus
+  async sumBonuses() {
+    const val = await queryScalar(
+      `SELECT COALESCE(SUM(amount),0)::int FROM transactions WHERE type IN ('daily_bonus','referral_bonus')`
+    );
+    return Number(val) || 0;
+  },
+};
+
 export default Transaction;
