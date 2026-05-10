@@ -29,19 +29,17 @@ export async function welcomeMessage(firstName) {
   const botName = await getSetting('bot_name') || 'NeoCash';
   const dailyBonus = await getSetting('daily_bonus') || 100;
   const referralBonus = await getSetting('referral_bonus') || 120;
-  const minWithdraw = await getSetting('min_withdraw') || 800;
   return `🎉 *Bienvenue sur ${botName} !*
 
 💸 Gagnez de l'argent facilement grâce au parrainage et aux bonus quotidiens.
 
 👥 *${referralBonus} FCFA* par ami invité
 🎁 *${dailyBonus} FCFA* bonus quotidien
-💳 Retrait minimum : *${formatAmount(minWithdraw)}*
 
 💳 Retraits disponibles via :
-MTN • Moov • Orange Money • TMoney • Wave
+MTN • Moov • Orange Money • TMoney • Wave et autres
 
-Invitez vos amis et augmentez vos revenus directement depuis Telegram. 🚀`;
+Invitez vos amis et augmentez vos revenus directement depuis Telegram.`;
 }
 
 // ─── Message solde ─────────────────────────────────────────────────────────────
