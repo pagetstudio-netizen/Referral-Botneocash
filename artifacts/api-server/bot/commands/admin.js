@@ -90,6 +90,76 @@ export async function handleAdminStats(ctx) {
   }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...backToAdminKeyboard }));
 }
 
+// ─── Canaux & Groupes configurés ─────────────────────────────────────────────
+export async function handleAdminChannels(ctx) {
+  await ctx.answerCbQuery().catch(() => {});
+
+  const [channel, group, site, withdrawalChannel] = await Promise.all([
+    getSetting('required_channel'),
+    getSetting('required_group'),
+    getSetting('required_site'),
+    getSetting('withdrawal_channel'),
+  ]);
+
+  const lines = [];
+
+  // Récupère le nombre de membres d'un chat Telegram
+  async function getMembersCount(chatId) {
+    if (!chatId) return null;
+    try {
+      const count = await ctx.telegram.getChatMembersCount(chatId);
+      return count;
+    } catch {
+      return null;
+    }
+  }
+
+  // Récupère les infos d'un chat (titre, type)
+  async function getChatInfo(chatId) {
+    if (!chatId) return null;
+    try {
+      const chat = await ctx.telegram.getChat(chatId);
+      return { title: chat.title || chat.username || chatId, type: chat.type };
+    } catch {
+      return null;
+    }
+  }
+
+  if (channel) {
+    const [info, count] = await Promise.all([getChatInfo(channel), getMembersCount(channel)]);
+    const title = info?.title || channel;
+    const countStr = count !== null ? `*${Number(count).toLocaleString('fr-FR')}* abonnés` : '❓ Accès refusé (bot non admin)';
+    lines.push(`📢 *Canal obligatoire*\n📌 ${title}\n👥 ${countStr}`);
+  }
+
+  if (group) {
+    const [info, count] = await Promise.all([getChatInfo(group), getMembersCount(group)]);
+    const title = info?.title || group;
+    const countStr = count !== null ? `*${Number(count).toLocaleString('fr-FR')}* membres` : '❓ Accès refusé (bot non admin)';
+    lines.push(`👥 *Groupe obligatoire*\n📌 ${title}\n👤 ${countStr}`);
+  }
+
+  if (withdrawalChannel) {
+    const [info, count] = await Promise.all([getChatInfo(withdrawalChannel), getMembersCount(withdrawalChannel)]);
+    const title = info?.title || withdrawalChannel;
+    const countStr = count !== null ? `*${Number(count).toLocaleString('fr-FR')}* abonnés` : '❓ Accès refusé (bot non admin)';
+    lines.push(`💸 *Canal de retrait*\n📌 ${title}\n👥 ${countStr}`);
+  }
+
+  if (site) {
+    lines.push(`🌐 *Site web obligatoire*\n🔗 ${site}`);
+  }
+
+  const text = lines.length
+    ? `📡 *CANAUX & GROUPES CONFIGURÉS*\n\n━━━━━━━━━━━━━━━━━━\n${lines.join('\n\n━━━━━━━━━━━━━━━━━━\n')}\n━━━━━━━━━━━━━━━━━━\n\n💡 _Pour voir les stats, le bot doit être administrateur du canal/groupe._`
+    : `📡 *CANAUX & GROUPES CONFIGURÉS*\n\n━━━━━━━━━━━━━━━━━━\n❌ Aucun canal ou groupe configuré.\n\nConfigure-les via ⚙️ Paramètres dans le panel admin.`;
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    ...backToAdminKeyboard,
+  }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...backToAdminKeyboard }));
+}
+
 // ─── Gestion retraits ─────────────────────────────────────────────────────────
 export async function handleAdminWithdrawals(ctx) {
   await ctx.answerCbQuery().catch(() => {});

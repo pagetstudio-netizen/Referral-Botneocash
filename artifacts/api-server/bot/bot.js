@@ -9,6 +9,7 @@ import { startCommand } from './commands/start.js';
 import {
   adminCommand,
   handleAdminStats,
+  handleAdminChannels,
   handleAdminWithdrawals,
   handleWithdrawalsList,
   handleAdminUsers,
@@ -241,6 +242,7 @@ export function createBot() {
 
   // ─── Callbacks admin — Panel ─────────────────────────────────────────────────
   bot.action('admin_stats', requireAdmin, handleAdminStats);
+  bot.action('admin_channels', requireAdmin, handleAdminChannels);
   bot.action('admin_withdrawals', requireAdmin, handleAdminWithdrawals);
   bot.action('admin_users', requireAdmin, handleAdminUsers);
   bot.action('admin_broadcast', requireAdmin, handleAdminBroadcast);

@@ -77,8 +77,8 @@ export const adminKeyboard = Markup.inlineKeyboard([
     Markup.button.callback('📢 Diffusion', 'admin_broadcast'),
   ],
   [
+    Markup.button.callback('📡 Canaux & Groupes', 'admin_channels'),
     Markup.button.callback('⚙️ Paramètres', 'admin_settings'),
-    Markup.button.callback('🔔 Notifications', 'admin_notifs'),
   ],
   [Markup.button.callback('🔄 Redémarrer', 'admin_restart')],
 ]);
