@@ -520,8 +520,22 @@ export async function handleAdminInput(ctx) {
 // ─── Diffusion globale ────────────────────────────────────────────────────────
 export async function executeBroadcast(ctx, session) {
   await ctx.answerCbQuery('📢 Diffusion en cours...').catch(() => {});
-  const users = await User.find({ banned: false }).limit(500000);
-  let sent = 0, failed = 0;
+
+  // Chargement de TOUS les utilisateurs non bannis (fix : find() est synchrone, limit() est async)
+  const users = await User.find({ banned: false }).limit(1000000);
+  const total = users.length;
+
+  let sent = 0, blocked = 0, failed = 0;
+
+  // Message de progression initial
+  const progressMsg = await ctx.reply(
+    `📢 *Diffusion en cours...*\n\n👥 Total : *${total}* utilisateurs\n📤 Envoyé : 0\n🚫 Bloqués : 0\n❌ Erreurs : 0`,
+    { parse_mode: 'Markdown' }
+  );
+
+  const replyOpts = session.broadcastButton
+    ? { reply_markup: { inline_keyboard: [[{ text: session.broadcastButton.label, url: session.broadcastButton.url }]] } }
+    : {};
 
   for (const user of users) {
     try {
@@ -530,27 +544,67 @@ export async function executeBroadcast(ctx, session) {
         await ctx.telegram.sendPhoto(user.telegramId, fileId, {
           caption: session.broadcastText || '',
           parse_mode: 'Markdown',
-          ...(session.broadcastButton ? {
-            reply_markup: { inline_keyboard: [[{ text: session.broadcastButton.label, url: session.broadcastButton.url }]] }
-          } : {}),
+          ...replyOpts,
         });
       } else {
         await ctx.telegram.sendMessage(user.telegramId, session.broadcastText, {
           parse_mode: 'Markdown',
-          ...(session.broadcastButton ? {
-            reply_markup: { inline_keyboard: [[{ text: session.broadcastButton.label, url: session.broadcastButton.url }]] }
-          } : {}),
+          ...replyOpts,
         });
       }
       sent++;
-      await new Promise((r) => setTimeout(r, 30));
-    } catch {
-      failed++;
+    } catch (err) {
+      const errMsg = err?.message || '';
+      // Utilisateur a bloqué le bot ou désactivé son compte
+      if (errMsg.includes('blocked') || errMsg.includes('deactivated') || errMsg.includes('chat not found') || errMsg.includes('user is deactivated')) {
+        blocked++;
+      } else if (errMsg.includes('Too Many Requests') || errMsg.includes('429')) {
+        // Flood control — pause plus longue et retry
+        const retryAfter = (err?.parameters?.retry_after || 5) * 1000;
+        await new Promise((r) => setTimeout(r, retryAfter));
+        try {
+          if (session.broadcastPhoto) {
+            const fileId = session.broadcastPhoto[session.broadcastPhoto.length - 1].file_id;
+            await ctx.telegram.sendPhoto(user.telegramId, fileId, { caption: session.broadcastText || '', parse_mode: 'Markdown', ...replyOpts });
+          } else {
+            await ctx.telegram.sendMessage(user.telegramId, session.broadcastText, { parse_mode: 'Markdown', ...replyOpts });
+          }
+          sent++;
+        } catch {
+          failed++;
+        }
+      } else {
+        failed++;
+      }
+    }
+
+    // Délai anti-flood Telegram (max 30 msg/sec → 35ms de sécurité)
+    await new Promise((r) => setTimeout(r, 35));
+
+    // Mise à jour progression toutes les 50 personnes
+    const processed = sent + blocked + failed;
+    if (processed > 0 && processed % 50 === 0) {
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        progressMsg.message_id,
+        undefined,
+        `📢 *Diffusion en cours...*\n\n👥 Total : *${total}*\n📤 Envoyé : *${sent}*\n🚫 Bloqués : *${blocked}*\n❌ Erreurs : *${failed}*\n⏳ Progression : *${Math.round((processed / total) * 100)}%*`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => {});
     }
   }
 
-  await ctx.reply(`✅ *Diffusion terminée !*\n\n📤 Envoyé : *${sent}*\n❌ Échecs : *${failed}*`, { parse_mode: 'Markdown' });
+  // Rapport final
+  await ctx.telegram.editMessageText(
+    ctx.chat.id,
+    progressMsg.message_id,
+    undefined,
+    `✅ *DIFFUSION TERMINÉE !*\n\n━━━━━━━━━━━━━━━━━━\n👥 Total ciblé : *${total}*\n📤 Reçu : *${sent}*\n🚫 Bloqué le bot : *${blocked}*\n❌ Autres erreurs : *${failed}*\n━━━━━━━━━━━━━━━━━━`,
+    { parse_mode: 'Markdown' }
+  ).catch(() => {});
+
   adminSessions.delete(ctx.from.id);
+  logger.info('Broadcast terminé', { total, sent, blocked, failed });
 }
 
 // ─── Maintenance toggle ────────────────────────────────────────────────────────

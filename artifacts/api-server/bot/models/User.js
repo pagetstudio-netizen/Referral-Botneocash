@@ -118,7 +118,7 @@ const User = {
     return Number(await queryScalar(sql, params));
   },
 
-  async find(filter = {}) {
+  find(filter = {}) {
     let sql = 'SELECT * FROM users WHERE 1=1';
     const params = [];
     let i = 1;
@@ -132,21 +132,21 @@ const User = {
       params.push(filter.telegramId.$ne);
     }
 
-    // Retourne un objet avec sort/limit pour chaîner
-    const rows = { _sql: sql, _params: params, _order: 'created_at DESC', _limit: 100 };
+    // Retourne un objet chainable synchrone — seul limit() est async
+    const meta = { _sql: sql, _params: params, _order: 'created_at DESC', _limit: 100 };
     return {
       sort(s) {
-        if (s.balance === -1) rows._order = 'balance DESC';
-        else if (s.createdAt === -1) rows._order = 'created_at DESC';
-        else if (s.createdAt === 1) rows._order = 'created_at ASC';
+        if (s.balance === -1) meta._order = 'balance DESC';
+        else if (s.createdAt === -1) meta._order = 'created_at DESC';
+        else if (s.createdAt === 1) meta._order = 'created_at ASC';
         return this;
       },
       async limit(n) {
-        rows._limit = n;
-        const res = await queryAll(`${rows._sql} ORDER BY ${rows._order} LIMIT $${rows._params.length + 1}`, [...rows._params, n]);
+        meta._limit = n;
+        const res = await queryAll(`${meta._sql} ORDER BY ${meta._order} LIMIT $${meta._params.length + 1}`, [...meta._params, n]);
         return res.map(toRecord);
       },
-      select(_fields) { return this; }, // compatibilité broadcast
+      select(_fields) { return this; },
     };
   },
 

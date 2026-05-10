@@ -70,13 +70,14 @@ const Withdrawal = {
     return Number(await queryScalar(sql, params));
   },
 
-  async find(filter = {}) {
+  find(filter = {}) {
     let sql = 'SELECT * FROM withdrawals WHERE 1=1';
     const params = [];
     let i = 1;
     if (filter.status) { sql += ` AND status=$${i++}`; params.push(filter.status); }
     if (filter.userId) { sql += ` AND user_id=$${i++}`; params.push(filter.userId); }
 
+    // Retourne un objet chainable synchrone — seul limit() est async
     const meta = { _sql: sql, _params: params, _order: 'created_at DESC', _limit: 20 };
     return {
       sort(s) {
