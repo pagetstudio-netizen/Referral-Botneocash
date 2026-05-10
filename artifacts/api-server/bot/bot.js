@@ -207,6 +207,15 @@ export function createBot() {
     await ctx.reply('📞 Entre le lien support Telegram (ex: https://t.me/support) :');
   });
 
+  bot.action('set_withdrawal_channel', requireAdmin, async (ctx) => {
+    await ctx.answerCbQuery();
+    setAdminSession(ctx.from.id, { action: 'set_withdrawal_channel' });
+    await ctx.reply(
+      `💸 *CANAL DE RETRAIT*\n\nEntre le username ou l'ID du canal où publier les notifications de retrait.\n\nExemples :\n• \`@mon_canal_retrait\`\n• \`-1001234567890\`\n\n⚠️ Le bot doit être *administrateur* du canal.`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
   bot.action('toggle_maintenance', requireAdmin, handleToggleMaintenance);
 
   // ─── Diffusion — Confirmation ─────────────────────────────────────────────────

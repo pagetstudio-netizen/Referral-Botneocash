@@ -94,13 +94,14 @@ export const adminSettingsKeyboard = Markup.inlineKeyboard([
     Markup.button.callback('📢 Canal obligatoire', 'set_required_channel'),
   ],
   [
+    Markup.button.callback('💸 Canal de retrait', 'set_withdrawal_channel'),
     Markup.button.callback('👥 Groupe obligatoire', 'set_required_group'),
-    Markup.button.callback('📞 Lien support', 'set_support_link'),
   ],
   [
+    Markup.button.callback('📞 Lien support', 'set_support_link'),
     Markup.button.callback('🚧 Mode maintenance', 'toggle_maintenance'),
-    Markup.button.callback('◀️ Retour', 'admin_back'),
   ],
+  [Markup.button.callback('◀️ Retour', 'admin_back')],
 ]);
 
 // ─── Clavier retraits pending admin ──────────────────────────────────────────

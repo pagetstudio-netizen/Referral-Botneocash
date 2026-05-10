@@ -201,15 +201,16 @@ export async function handleAdminBroadcast(ctx) {
 // ─── Paramètres admin ─────────────────────────────────────────────────────────
 export async function handleAdminSettings(ctx) {
   await ctx.answerCbQuery().catch(() => {});
-  const [dailyBonus, referralBonus, minWithdraw, channel, maintenance] = await Promise.all([
+  const [dailyBonus, referralBonus, minWithdraw, channel, withdrawalChannel, maintenance] = await Promise.all([
     getSetting('daily_bonus'),
     getSetting('referral_bonus'),
     getSetting('min_withdraw'),
     getSetting('required_channel'),
+    getSetting('withdrawal_channel'),
     getSetting('maintenance_mode'),
   ]);
 
-  const text = `⚙️ *PARAMÈTRES NEOCASH*\n\n━━━━━━━━━━━━━━━━━━\n🎁 Bonus quotidien : *${formatAmount(dailyBonus)}*\n👥 Bonus parrainage : *${formatAmount(referralBonus)}*\n💰 Retrait minimum : *${formatAmount(minWithdraw)}*\n📢 Canal obligatoire : ${channel || 'Non défini'}\n🚧 Maintenance : ${maintenance ? '✅ Activée' : '❌ Désactivée'}\n━━━━━━━━━━━━━━━━━━`;
+  const text = `⚙️ *PARAMÈTRES NEOCASH*\n\n━━━━━━━━━━━━━━━━━━\n🎁 Bonus quotidien : *${formatAmount(dailyBonus)}*\n👥 Bonus parrainage : *${formatAmount(referralBonus)}*\n💰 Retrait minimum : *${formatAmount(minWithdraw)}*\n📢 Canal obligatoire : ${channel || 'Non défini'}\n💸 Canal de retrait : ${withdrawalChannel || 'Non défini'}\n🚧 Maintenance : ${maintenance ? '✅ Activée' : '❌ Désactivée'}\n━━━━━━━━━━━━━━━━━━`;
 
   await ctx.editMessageText(text, {
     parse_mode: 'Markdown',
@@ -317,6 +318,15 @@ export async function handleAdminInput(ctx) {
     case 'set_support_link': {
       await setSetting('support_link', text);
       await ctx.reply(`✅ Lien support mis à jour.`);
+      adminSessions.delete(userId);
+      return true;
+    }
+    case 'set_withdrawal_channel': {
+      await setSetting('withdrawal_channel', text);
+      await ctx.reply(
+        `✅ *Canal de retrait configuré !*\n\n💸 Canal : \`${text}\`\n\n📌 Le bot enverra maintenant les notifications de retrait dans ce canal.\n\n⚠️ Assure-toi que le bot est administrateur du canal.`,
+        { parse_mode: 'Markdown' }
+      );
       adminSessions.delete(userId);
       return true;
     }

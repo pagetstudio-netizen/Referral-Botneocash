@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = {
   required_site: { value: '', description: "URL du site obligatoire à rejoindre" },
   support_link: { value: '', description: 'Lien vers le support Telegram' },
   admin_group_id: { value: '', description: 'ID du groupe admin pour les notifications' },
+  withdrawal_channel: { value: '', description: 'ID ou username du canal de retrait (notifications publiques)' },
   maintenance_mode: { value: false, description: 'Mode maintenance activé/désactivé' },
   bot_name: { value: 'NeoCash', description: 'Nom du bot' },
 };

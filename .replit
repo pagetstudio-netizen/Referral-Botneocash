@@ -26,11 +26,3 @@ externalPort = 8080
 [[ports]]
 localPort = 8081
 externalPort = 80
-
-[userenv]
-
-[userenv.shared]
-REFERRAL_BONUS = "120"
-DAILY_BONUS = "100"
-MIN_WITHDRAW = "800"
-LOG_LEVEL = "info"
