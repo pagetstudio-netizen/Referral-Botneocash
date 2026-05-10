@@ -3,7 +3,7 @@
  */
 import { Telegraf } from 'telegraf';
 import { antiSpam } from './middleware/antispam.js';
-import { getOrCreateUser, checkBanned, checkChannelMembership, checkMaintenance, isUserAdmin } from './middleware/auth.js';
+import { getOrCreateUser, checkBanned, checkChannelMembership, checkMaintenance, isUserAdmin, clearMembershipCache } from './middleware/auth.js';
 import { requireAdmin } from './middleware/admin.js';
 import { startCommand } from './commands/start.js';
 import {
@@ -143,6 +143,7 @@ export function createBot() {
       // Tout bon → accès accordé
       ctx.dbUser.isVerified = true;
       await ctx.dbUser.save();
+      clearMembershipCache(userId);
       await ctx.editMessageText('✅ Accès accordé ! Bienvenue !').catch(() => {});
       await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
       return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.', {

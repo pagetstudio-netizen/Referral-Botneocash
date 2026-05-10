@@ -256,7 +256,20 @@ export async function handleConfirmWithdrawal(ctx) {
 export async function handleWithdrawalTextInput(ctx) {
   const userId = ctx.from.id;
   const session = withdrawalSessions.get(userId);
-  if (!session) return false;
+  if (!session) {
+    // Detect if user seems to be in a flow (sends a number or phone-like text)
+    const text = ctx.message?.text?.trim() || '';
+    const looksLikePhone = /^\+?[\d\s\-]{7,15}$/.test(text);
+    const looksLikeAmount = /^\d{3,7}$/.test(text.replace(/\s/g, ''));
+    if (looksLikePhone || looksLikeAmount) {
+      await ctx.reply(
+        `⚠️ *Session expirée*\n\nTon retrait a été interrompu (le bot a redémarré).\n\nClique sur *💸 Retrait* pour recommencer.`,
+        { parse_mode: 'Markdown', ...mainKeyboard }
+      );
+      return true;
+    }
+    return false;
+  }
 
   const text = ctx.message.text.trim();
 

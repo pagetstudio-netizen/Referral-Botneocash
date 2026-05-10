@@ -29,18 +29,29 @@ export async function initSettings() {
   }
 }
 
-export async function getSetting(key) {
-  const row = await queryOne('SELECT value FROM settings WHERE key=$1', [key]);
-  const raw = row ? row.value : (DEFAULT_SETTINGS[key]?.value ?? null);
-  if (raw === null) return null;
+const _settingsCache = new Map();
+const SETTINGS_TTL = 60_000;
 
-  // Conversion de types selon la clé
+function _processRaw(key, raw) {
+  if (raw === null) return null;
   if (['referral_bonus', 'daily_bonus', 'min_withdraw'].includes(key)) return Number(raw);
   if (key === 'maintenance_mode') return raw === 'true' || raw === true;
   return raw;
 }
 
+export async function getSetting(key) {
+  const cached = _settingsCache.get(key);
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
+
+  const row = await queryOne('SELECT value FROM settings WHERE key=$1', [key]);
+  const raw = row ? row.value : (DEFAULT_SETTINGS[key]?.value ?? null);
+  const value = _processRaw(key, raw);
+  _settingsCache.set(key, { value, expiresAt: Date.now() + SETTINGS_TTL });
+  return value;
+}
+
 export async function setSetting(key, value) {
+  _settingsCache.delete(key);
   await query(
     `INSERT INTO settings (key, value, updated_at)
      VALUES ($1, $2, NOW())

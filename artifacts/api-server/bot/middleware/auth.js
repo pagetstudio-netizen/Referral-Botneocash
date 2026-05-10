@@ -8,6 +8,10 @@ import { multiChannelVerifyKeyboard } from '../utils/keyboards.js';
 import { multiChannelVerifyMessage } from '../utils/messages.js';
 import logger from '../utils/logger.js';
 
+// Throttle lastActivityAt saves — only write to DB every 5 min per user
+const _lastSavedAt = new Map();
+const SAVE_THROTTLE = 5 * 60_000;
+
 // ─── Récupérer ou créer un utilisateur ────────────────────────────────────────
 export async function getOrCreateUser(ctx, next) {
   const tg = ctx.from;
@@ -25,11 +29,21 @@ export async function getOrCreateUser(ctx, next) {
         referralCode: code,
       });
     } else {
+      const now = Date.now();
+      const lastSaved = _lastSavedAt.get(tg.id) || 0;
+      const nameChanged = user.username !== (tg.username || null) ||
+        user.firstName !== (tg.first_name || '') ||
+        user.lastName !== (tg.last_name || '');
+
       user.username = tg.username || null;
       user.firstName = tg.first_name || '';
       user.lastName = tg.last_name || '';
       user.lastActivityAt = new Date();
-      await user.save();
+
+      if (nameChanged || now - lastSaved > SAVE_THROTTLE) {
+        await user.save();
+        _lastSavedAt.set(tg.id, now);
+      }
     }
     ctx.dbUser = user;
   } catch (err) {
@@ -62,6 +76,14 @@ export async function checkMaintenance(ctx, next) {
   return next();
 }
 
+// ─── Cache adhésion canaux par utilisateur (TTL 5 min) ────────────────────────
+const _membershipCache = new Map();
+const MEMBERSHIP_TTL = 5 * 60_000;
+
+function _invalidateMembership(userId) {
+  _membershipCache.delete(userId);
+}
+
 // ─── Vérifier adhésion aux canaux obligatoires (multi-canaux) ─────────────────
 export async function checkChannelMembership(ctx, next) {
   if (ctx.callbackQuery?.data === 'verify_channel') return next();
@@ -76,9 +98,17 @@ export async function checkChannelMembership(ctx, next) {
     const channels = await RequiredChannel.findAll();
     if (!channels.length) return next();
 
-    const missing = await getMissingChannels(ctx.telegram, userId, channels);
-    if (!missing.length) return next();
+    // Check cache first
+    const cached = _membershipCache.get(userId);
+    if (cached && Date.now() < cached.expiresAt) {
+      if (cached.missing.length === 0) return next();
+      return sendMultiVerifyMessage(ctx, cached.missing);
+    }
 
+    const missing = await getMissingChannels(ctx.telegram, userId, channels);
+    _membershipCache.set(userId, { missing, expiresAt: Date.now() + MEMBERSHIP_TTL });
+
+    if (!missing.length) return next();
     return sendMultiVerifyMessage(ctx, missing);
   } catch (err) {
     logger.warn('checkChannelMembership error', { err: err.message });
@@ -91,8 +121,6 @@ export async function getMissingChannels(telegram, userId, channels) {
   const missing = [];
   for (const ch of channels) {
     if (ch.type === 'website') {
-      // Pour les sites web : vérifier si l'utilisateur a cliqué "Vérifier"
-      // On ne peut pas vérifier automatiquement → traiter comme non vérifié si pas en DB
       try {
         const verified = await RequiredChannel.getUserVerifiedIds(userId);
         if (!verified.includes(ch.id)) missing.push(ch);
@@ -110,6 +138,11 @@ export async function getMissingChannels(telegram, userId, channels) {
     }
   }
   return missing;
+}
+
+// ─── Invalider le cache après vérification réussie ────────────────────────────
+export function clearMembershipCache(userId) {
+  _invalidateMembership(userId);
 }
 
 async function sendMultiVerifyMessage(ctx, missingChannels) {

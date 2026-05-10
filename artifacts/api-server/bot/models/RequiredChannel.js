@@ -16,13 +16,25 @@ class RequiredChannelRecord {
   }
 }
 
+let _channelsCache = null;
+let _channelsCacheExpiresAt = 0;
+const CHANNELS_TTL = 60_000;
+
+function _invalidateChannelsCache() {
+  _channelsCache = null;
+  _channelsCacheExpiresAt = 0;
+}
+
 const RequiredChannel = {
   async findAll() {
+    if (_channelsCache && Date.now() < _channelsCacheExpiresAt) return _channelsCache;
     const rows = await queryAll(
       'SELECT * FROM required_channels WHERE is_active = TRUE ORDER BY display_order ASC, created_at ASC',
       []
     );
-    return rows.map(r => new RequiredChannelRecord(r));
+    _channelsCache = rows.map(r => new RequiredChannelRecord(r));
+    _channelsCacheExpiresAt = Date.now() + CHANNELS_TTL;
+    return _channelsCache;
   },
 
   async findAllAdmin() {
@@ -42,6 +54,7 @@ const RequiredChannel = {
   },
 
   async create(data) {
+    _invalidateChannelsCache();
     const row = await queryOne(
       `INSERT INTO required_channels (label, type, chat_id_or_url, display_order)
        VALUES ($1, $2, $3, $4) RETURNING *`,
@@ -51,6 +64,7 @@ const RequiredChannel = {
   },
 
   async update(id, data) {
+    _invalidateChannelsCache();
     const row = await queryOne(
       `UPDATE required_channels
        SET label=$1, type=$2, chat_id_or_url=$3, display_order=$4, is_active=$5
@@ -61,6 +75,7 @@ const RequiredChannel = {
   },
 
   async delete(id) {
+    _invalidateChannelsCache();
     await query('DELETE FROM channel_verifications WHERE channel_id = $1', [id]);
     await query('DELETE FROM required_channels WHERE id = $1', [id]);
   },
