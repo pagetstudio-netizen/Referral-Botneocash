@@ -201,16 +201,29 @@ export async function handleAdminBroadcast(ctx) {
 // ─── Paramètres admin ─────────────────────────────────────────────────────────
 export async function handleAdminSettings(ctx) {
   await ctx.answerCbQuery().catch(() => {});
-  const [dailyBonus, referralBonus, minWithdraw, channel, withdrawalChannel, maintenance] = await Promise.all([
+  const [dailyBonus, referralBonus, minWithdraw, channel, withdrawalChannel, supportLink, supportMessage, maintenance] = await Promise.all([
     getSetting('daily_bonus'),
     getSetting('referral_bonus'),
     getSetting('min_withdraw'),
     getSetting('required_channel'),
     getSetting('withdrawal_channel'),
+    getSetting('support_link'),
+    getSetting('support_message'),
     getSetting('maintenance_mode'),
   ]);
 
-  const text = `⚙️ *PARAMÈTRES NEOCASH*\n\n━━━━━━━━━━━━━━━━━━\n🎁 Bonus quotidien : *${formatAmount(dailyBonus)}*\n👥 Bonus parrainage : *${formatAmount(referralBonus)}*\n💰 Retrait minimum : *${formatAmount(minWithdraw)}*\n📢 Canal obligatoire : ${channel || 'Non défini'}\n💸 Canal de retrait : ${withdrawalChannel || 'Non défini'}\n🚧 Maintenance : ${maintenance ? '✅ Activée' : '❌ Désactivée'}\n━━━━━━━━━━━━━━━━━━`;
+  const text =
+    `⚙️ *PARAMÈTRES NEOCASH*\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `🎁 Bonus quotidien : *${formatAmount(dailyBonus)}*\n` +
+    `👥 Bonus parrainage : *${formatAmount(referralBonus)}*\n` +
+    `💰 Retrait minimum : *${formatAmount(minWithdraw)}*\n` +
+    `📢 Canal obligatoire : ${channel || '❌ Non défini'}\n` +
+    `💸 Canal de retrait : ${withdrawalChannel || '❌ Non défini'}\n` +
+    `📞 Lien support : ${supportLink || '❌ Non défini'}\n` +
+    `✏️ Message support : ${supportMessage ? '✅ Personnalisé' : '📄 Par défaut'}\n` +
+    `🚧 Maintenance : ${maintenance ? '✅ Activée' : '❌ Désactivée'}\n` +
+    `━━━━━━━━━━━━━━━━━━`;
 
   await ctx.editMessageText(text, {
     parse_mode: 'Markdown',
@@ -317,7 +330,26 @@ export async function handleAdminInput(ctx) {
     }
     case 'set_support_link': {
       await setSetting('support_link', text);
-      await ctx.reply(`✅ Lien support mis à jour.`);
+      await ctx.reply(
+        `✅ *Lien support mis à jour !*\n\n🔗 \`${text}\`\n\nLes utilisateurs verront ce bouton dans la section Support.`,
+        { parse_mode: 'Markdown' }
+      );
+      adminSessions.delete(userId);
+      return true;
+    }
+    case 'set_support_message': {
+      if (!text) { await ctx.reply('⚠️ Message vide. Envoie le texte à afficher ou \`reset\` pour revenir au défaut.', { parse_mode: 'Markdown' }); return true; }
+      if (text.trim().toLowerCase() === 'reset') {
+        await setSetting('support_message', '');
+        await ctx.reply('✅ Message support réinitialisé au texte par défaut.', { parse_mode: 'Markdown' });
+        adminSessions.delete(userId);
+        return true;
+      }
+      await setSetting('support_message', text);
+      await ctx.reply(
+        `✅ *Message support mis à jour !*\n\n📝 *Aperçu :*\n\n${text}\n\n_Ce texte s'affichera dans la section 📞 Support._`,
+        { parse_mode: 'Markdown' }
+      );
       adminSessions.delete(userId);
       return true;
     }

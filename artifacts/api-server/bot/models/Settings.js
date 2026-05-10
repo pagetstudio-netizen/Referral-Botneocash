@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS = {
   required_group: { value: '', description: 'ID ou username du groupe obligatoire' },
   required_site: { value: '', description: "URL du site obligatoire à rejoindre" },
   support_link: { value: '', description: 'Lien vers le support Telegram' },
+  support_message: { value: '', description: 'Message personnalisé affiché dans la section support' },
   admin_group_id: { value: '', description: 'ID du groupe admin pour les notifications' },
   withdrawal_channel: { value: '', description: 'ID ou username du canal de retrait (notifications publiques)' },
   maintenance_mode: { value: false, description: 'Mode maintenance activé/désactivé' },

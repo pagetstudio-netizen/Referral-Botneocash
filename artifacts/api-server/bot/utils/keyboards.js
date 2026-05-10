@@ -99,9 +99,12 @@ export const adminSettingsKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback('📞 Lien support', 'set_support_link'),
-    Markup.button.callback('🚧 Mode maintenance', 'toggle_maintenance'),
+    Markup.button.callback('✏️ Message support', 'set_support_message'),
   ],
-  [Markup.button.callback('◀️ Retour', 'admin_back')],
+  [
+    Markup.button.callback('🚧 Mode maintenance', 'toggle_maintenance'),
+    Markup.button.callback('◀️ Retour', 'admin_back'),
+  ],
 ]);
 
 // ─── Clavier retraits pending admin ──────────────────────────────────────────

@@ -204,7 +204,28 @@ export function createBot() {
   bot.action('set_support_link', requireAdmin, async (ctx) => {
     await ctx.answerCbQuery();
     setAdminSession(ctx.from.id, { action: 'set_support_link' });
-    await ctx.reply('📞 Entre le lien support Telegram (ex: https://t.me/support) :');
+    await ctx.reply(
+      `📞 *LIEN SUPPORT*\n\nEntre le lien vers ton support Telegram.\n\nExemples :\n• \`https://t.me/mon_support\`\n• \`https://t.me/+AbCdEfGhIjKl\` (groupe privé)\n• \`https://t.me/monbot\`\n\n💡 Ce lien apparaîtra comme bouton dans la section 📞 Support.`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  bot.action('set_support_message', requireAdmin, async (ctx) => {
+    await ctx.answerCbQuery();
+    setAdminSession(ctx.from.id, { action: 'set_support_message' });
+    await ctx.reply(
+      `✏️ *MESSAGE SUPPORT PERSONNALISÉ*\n\n` +
+      `Écris le texte qui s'affichera dans la section 📞 Support.\n\n` +
+      `💡 Tu peux mentionner :\n` +
+      `• Les types de problèmes traités\n` +
+      `• La disponibilité des publicités\n` +
+      `• Les partenariats possibles\n` +
+      `• Les horaires de support\n` +
+      `• Tout autre information utile\n\n` +
+      `_Le formatage Markdown est supporté (*gras*, _italique_, etc.)_\n\n` +
+      `📄 Pour revenir au texte par défaut, envoie : \`reset\``,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   bot.action('set_withdrawal_channel', requireAdmin, async (ctx) => {
