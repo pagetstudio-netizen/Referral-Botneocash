@@ -1,11 +1,16 @@
 /**
  * NeoCash Bot — Point d'entrée principal
- * Démarre le bot Telegram + serveur Express (healthcheck)
+ * Démarre le bot Telegram + serveur Express (healthcheck + admin dashboard statique)
  */
 import 'dotenv/config';
 import express from 'express';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import logger from './utils/logger.js';
 import adminRouter from './routes/admin.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PORT = process.env.PORT || 5000;
 
@@ -22,6 +27,16 @@ app.use((req, res, next) => {
 
 // Admin web routes
 app.use('/api', adminRouter);
+
+// ─── Tableau de bord admin (fichiers statiques en production) ─────────────────
+const ADMIN_DIST = join(__dirname, '..', '..', 'admin-dashboard', 'dist', 'public');
+if (existsSync(ADMIN_DIST)) {
+  app.use('/admin', express.static(ADMIN_DIST, { index: false }));
+  // SPA fallback — toutes les routes /admin/* renvoient index.html
+  app.get('/admin', (req, res) => res.sendFile(join(ADMIN_DIST, 'index.html')));
+  app.get('/admin/*', (req, res) => res.sendFile(join(ADMIN_DIST, 'index.html')));
+  logger.info('📊 Tableau de bord admin servi depuis /admin');
+}
 
 app.get('/api/health', (req, res) => {
   res.json({

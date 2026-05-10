@@ -57,5 +57,8 @@ artifacts/api-server/logs/
 
 # Dossiers de build inutiles en prod
 artifacts/mockup-sandbox/
-lib/
 scripts/
+
+# Sorties de build des packages lib (générés automatiquement)
+lib/*/dist/
+lib/api-spec/src/generated/
