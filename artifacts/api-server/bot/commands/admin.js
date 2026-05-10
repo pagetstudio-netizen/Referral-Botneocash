@@ -302,9 +302,25 @@ export async function handleAdminUserSearch(ctx, query) {
 
   if (!user) return ctx.reply('❌ Utilisateur introuvable.');
 
-  const text = `👤 *UTILISATEUR*\n\n🆔 ID : \`${user.telegramId}\`\n📛 Username : ${user.username ? '@' + user.username : 'N/A'}\n👤 Nom : ${user.firstName} ${user.lastName || ''}\n💰 Solde : *${formatAmount(user.balance)}*\n👥 Filleuls : *${user.referralCount}*\n📅 Inscrit : ${formatDate(user.createdAt)}\n🚫 Banni : ${user.banned ? '✅ Oui' : '❌ Non'}`;
+  const MIN_REF = 15;
+  const wdStatus = user.withdrawalUnlocked
+    ? '🔓 Débloqué par admin'
+    : user.referralCount >= MIN_REF
+      ? `✅ Débloqué (${user.referralCount} filleuls)`
+      : `🔒 Verrouillé (${user.referralCount}/${MIN_REF} filleuls)`;
 
-  await ctx.reply(text, { parse_mode: 'Markdown', ...userAdminKeyboard(user.telegramId) });
+  const text =
+    `👤 *UTILISATEUR*\n\n` +
+    `🆔 ID : \`${user.telegramId}\`\n` +
+    `📛 Username : ${user.username ? '@' + user.username : 'N/A'}\n` +
+    `👤 Nom : ${user.firstName} ${user.lastName || ''}\n` +
+    `💰 Solde : *${formatAmount(user.balance)}*\n` +
+    `👥 Filleuls : *${user.referralCount}/${MIN_REF}*\n` +
+    `💸 Retrait : ${wdStatus}\n` +
+    `📅 Inscrit : ${formatDate(user.createdAt)}\n` +
+    `🚫 Banni : ${user.banned ? '✅ Oui' : '❌ Non'}`;
+
+  await ctx.reply(text, { parse_mode: 'Markdown', ...userAdminKeyboard(user.telegramId, user.withdrawalUnlocked) });
 }
 
 // ─── Créditer/débiter utilisateur ────────────────────────────────────────────
@@ -336,6 +352,35 @@ export async function handleAdminBan(ctx, targetId, unban = false) {
   if (!unban) {
     await notifyAdmins_local(ctx.telegram, `🚫 *UTILISATEUR BANNI*\n\n👤 ${user.firstName}\n🆔 \`${user.telegramId}\``);
   }
+}
+
+// ─── Débloquer / Verrouiller retrait utilisateur ─────────────────────────────
+export async function handleAdminToggleWithdrawal(ctx, targetId, unlock = true) {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = await User.findOne({ telegramId: Number(targetId) });
+  if (!user) return ctx.reply('❌ Utilisateur introuvable.');
+
+  user.withdrawalUnlocked = unlock;
+  await user.save();
+
+  const label = unlock ? '🔓 débloqué' : '🔒 verrouillé';
+  await ctx.reply(
+    `✅ Retrait *${label}* pour \`${targetId}\`.\n\n` +
+    `👤 ${user.firstName} ${user.lastName || ''}\n` +
+    `👥 Filleuls : *${user.referralCount}/15*`,
+    { parse_mode: 'Markdown' }
+  );
+
+  // Notifier l'utilisateur si on lui débloque le retrait
+  if (unlock) {
+    await notifyUser(ctx.telegram, user.telegramId,
+      `🎉 *RETRAIT DÉBLOQUÉ !*\n\n` +
+      `✅ Un administrateur t'a accordé l'accès au retrait.\n\n` +
+      `💸 Tu peux maintenant effectuer ton retrait depuis le menu principal !`
+    ).catch(() => {});
+  }
+
+  logger.info('Admin toggle withdrawal unlock', { targetId, unlock });
 }
 
 // ─── Diffusion globale ────────────────────────────────────────────────────────

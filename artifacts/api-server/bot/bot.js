@@ -21,6 +21,7 @@ import {
   handleAdminInput,
   handleAdminCredit,
   handleAdminBan,
+  handleAdminToggleWithdrawal,
   handleToggleMaintenance,
   executeBroadcast,
   getAdminSession,
@@ -278,6 +279,8 @@ export function createBot() {
   bot.action(/^admin_debit_(\d+)$/, requireAdmin, (ctx) => handleAdminCredit(ctx, ctx.match[1], true));
   bot.action(/^admin_ban_(\d+)$/, requireAdmin, (ctx) => handleAdminBan(ctx, ctx.match[1]));
   bot.action(/^admin_unban_(\d+)$/, requireAdmin, (ctx) => handleAdminBan(ctx, ctx.match[1], true));
+  bot.action(/^admin_unlock_wd_(\d+)$/, requireAdmin, (ctx) => handleAdminToggleWithdrawal(ctx, ctx.match[1], true));
+  bot.action(/^admin_lock_wd_(\d+)$/, requireAdmin, (ctx) => handleAdminToggleWithdrawal(ctx, ctx.match[1], false));
 
   // ─── Callbacks admin — Paramètres ────────────────────────────────────────────
   bot.action('set_daily_bonus', requireAdmin, async (ctx) => {

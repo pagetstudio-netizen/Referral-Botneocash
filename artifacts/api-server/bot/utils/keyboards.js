@@ -151,7 +151,7 @@ export const channelsTestKeyboard = Markup.inlineKeyboard([
 ]);
 
 // ─── Clavier utilisateur admin ────────────────────────────────────────────────
-export function userAdminKeyboard(targetId) {
+export function userAdminKeyboard(targetId, withdrawalUnlocked = false) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback('➕ Créditer', `admin_credit_${targetId}`),
@@ -160,6 +160,11 @@ export function userAdminKeyboard(targetId) {
     [
       Markup.button.callback('🚫 Bannir', `admin_ban_${targetId}`),
       Markup.button.callback('✅ Débannir', `admin_unban_${targetId}`),
+    ],
+    [
+      withdrawalUnlocked
+        ? Markup.button.callback('🔒 Verrouiller retrait', `admin_lock_wd_${targetId}`)
+        : Markup.button.callback('🔓 Débloquer retrait', `admin_unlock_wd_${targetId}`),
     ],
     [Markup.button.callback('◀️ Retour', 'admin_back')],
   ]);

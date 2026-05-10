@@ -22,6 +22,7 @@ class UserRecord {
     this.banned = row.banned;
     this.bannedReason = row.banned_reason;
     this.bannedAt = row.banned_at;
+    this.withdrawalUnlocked = row.withdrawal_unlocked ?? false;
     this.isVerified = row.is_verified;
     this.lastActivityAt = row.last_activity_at;
     this.waitingForSupport = row.waiting_for_support;
@@ -52,16 +53,16 @@ class UserRecord {
         referral_code=$5, referred_by=$6, referral_count=$7,
         referral_earnings=$8, bonus_earnings=$9, total_withdrawn=$10,
         last_bonus_at=$11, banned=$12, banned_reason=$13, banned_at=$14,
-        is_verified=$15, last_activity_at=$16, waiting_for_support=$17,
-        updated_at=NOW()
-       WHERE telegram_id=$18`,
+        withdrawal_unlocked=$15, is_verified=$16, last_activity_at=$17,
+        waiting_for_support=$18, updated_at=NOW()
+       WHERE telegram_id=$19`,
       [
         this.username, this.firstName, this.lastName, this.balance,
         this.referralCode, this.referredBy, this.referralCount,
         this.referralEarnings, this.bonusEarnings, this.totalWithdrawn,
         this.lastBonusAt, this.banned, this.bannedReason, this.bannedAt,
-        this.isVerified, this.lastActivityAt, this.waitingForSupport,
-        this.telegramId,
+        this.withdrawalUnlocked, this.isVerified, this.lastActivityAt,
+        this.waitingForSupport, this.telegramId,
       ]
     );
   }

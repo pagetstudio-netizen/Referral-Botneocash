@@ -52,6 +52,9 @@ CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
 
 ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS beneficiary_name TEXT NOT NULL DEFAULT '';
 
+-- Anti-triche : déblocage retrait par admin
+ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_unlocked BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS referrals (
   id BIGSERIAL PRIMARY KEY,
   referrer_id BIGINT NOT NULL,

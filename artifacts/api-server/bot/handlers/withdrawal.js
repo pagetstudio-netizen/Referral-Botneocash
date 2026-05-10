@@ -61,12 +61,27 @@ const STEP = {
   CONFIRM: 'confirm',
 };
 
+const MIN_REFERRALS_TO_WITHDRAW = 15;
+
 // ─── Démarrer le flux retrait ─────────────────────────────────────────────────
 export async function handleWithdrawal(ctx) {
   const user = ctx.dbUser;
   if (!user) return;
 
   const minWithdraw = await getSetting('min_withdraw') || 800;
+
+  // ── Vérification anti-triche : 15 filleuls minimum ──────────────────────────
+  const canWithdraw = user.referralCount >= MIN_REFERRALS_TO_WITHDRAW || user.withdrawalUnlocked;
+  if (!canWithdraw) {
+    return ctx.reply(
+      `🔒 *RETRAIT VERROUILLÉ*\n\n━━━━━━━━━━━━━━━━━━\n` +
+      `Pour effectuer un retrait, tu dois parrainer au moins *${MIN_REFERRALS_TO_WITHDRAW} amis*.\n\n` +
+      `👥 Filleuls actuels : *${user.referralCount}/${MIN_REFERRALS_TO_WITHDRAW}*\n` +
+      `━━━━━━━━━━━━━━━━━━\n\n` +
+      `📲 Partage ton lien de parrainage pour débloquer le retrait !`,
+      { parse_mode: 'Markdown' }
+    );
+  }
 
   if (user.balance < minWithdraw) {
     return ctx.reply(
