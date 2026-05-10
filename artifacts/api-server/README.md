@@ -1,145 +1,114 @@
-# 🤖 NeoCash Bot
+# 🤖 NeoCash Bot — Guide de déploiement Plesk
 
 Bot Telegram professionnel de gains et de parrainage pour l'Afrique de l'Ouest.
 
-## ✨ Fonctionnalités
+---
 
-- 👥 **Parrainage** — 120 FCFA par ami invité
-- 🎁 **Bonus quotidien** — 100 FCFA toutes les 24h
-- 💸 **Retraits** — Mobile Money (MTN, Moov, Orange, TMoney, Wave, etc.)
-- 🔒 **Vérification canal** — Accès conditionné à l'adhésion
-- 🛡 **Panel Admin complet** — Stats, gestion users, diffusion globale
-- 🌍 **Multi-pays** — Togo, Bénin, Côte d'Ivoire, Sénégal, Mali, Burkina, Niger, Guinée, Cameroun, Congo
+## ⚙️ Configuration Plesk (Node.js)
 
-## 🚀 Installation rapide
+Dans le panneau Plesk, ouvre **Node.js** et configure :
 
-### 1. Cloner et installer les dépendances
+| Paramètre | Valeur |
+|-----------|--------|
+| **Document Root** | Chemin vers `artifacts/api-server` dans ton repo |
+| **Application Startup File** | `bot/index.js` |
+| **Node.js version** | 20 ou supérieur |
 
-```bash
-git clone <repo>
-cd neocash-bot
-pnpm install
-```
+---
 
-### 2. Configurer les variables d'environnement
+## 🔑 Variables d'environnement (obligatoires)
 
-```bash
-cp .env.example .env
-```
-
-Édite `.env` et remplis :
-- `BOT_TOKEN` — Token obtenu via [@BotFather](https://t.me/BotFather)
-- `MONGODB_URI` — Connexion MongoDB Atlas ou locale
-- `ADMIN_IDS` — Ton ID Telegram (obtenu via [@userinfobot](https://t.me/userinfobot))
-
-### 3. Démarrer le bot
-
-```bash
-pnpm run dev
-```
-
-## ⚙️ Variables d'environnement
+Dans **Plesk → Node.js → Environment Variables**, ajoute :
 
 | Variable | Description | Exemple |
-|---|---|---|
-| `BOT_TOKEN` | Token Telegram du bot | `123456:ABC...` |
-| `MONGODB_URI` | URI MongoDB | `mongodb+srv://...` |
-| `ADMIN_IDS` | IDs admins (séparés par virgule) | `123456,789012` |
-| `ADMIN_GROUP_ID` | ID groupe admin (notifications) | `-100123456789` |
-| `REFERRAL_BONUS` | Bonus parrainage (FCFA) | `120` |
-| `DAILY_BONUS` | Bonus quotidien (FCFA) | `100` |
-| `MIN_WITHDRAW` | Retrait minimum (FCFA) | `800` |
-| `REQUIRED_CHANNEL` | Canal obligatoire | `@moncanal` |
+|----------|-------------|---------|
+| `BOT_TOKEN` | Token du bot (@BotFather) | `7123456789:AAH...` |
+| `MONGODB_URI` | URI MongoDB Atlas | `mongodb+srv://user:pass@cluster.mongodb.net/neocash` |
+| `ADMIN_IDS` | Ton ID Telegram (via @userinfobot) | `123456789` |
 
-## 📂 Structure du projet
+### Variables optionnelles
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `ADMIN_GROUP_ID` | ID groupe admin Telegram | — |
+| `REFERRAL_BONUS` | Bonus parrainage FCFA | `120` |
+| `DAILY_BONUS` | Bonus quotidien FCFA | `100` |
+| `MIN_WITHDRAW` | Retrait minimum FCFA | `800` |
+| `PORT` | Port du serveur HTTP | `5000` |
+| `NODE_ENV` | Environnement | `production` |
+| `LOG_LEVEL` | Niveau de log | `info` |
+
+> 💡 Tu peux aussi créer un fichier `.env` à la racine de `artifacts/api-server/` en copiant `.env.example`.
+
+---
+
+## 🚀 Procédure de déploiement
+
+### Premier déploiement
+
+1. **Connecter** le repo GitHub dans Plesk (Git → Add Repository)
+2. **Configurer** le Document Root sur `artifacts/api-server`
+3. **Ajouter** les variables d'environnement (BOT_TOKEN, MONGODB_URI, ADMIN_IDS)
+4. Cliquer **NPM Install** dans Plesk
+5. Cliquer **Run** (ou **Restart**)
+
+### Mise à jour (Pull + Deploy + Restart)
+
+1. Cliquer **Pull** dans Plesk (ou **Deploy Now**)
+2. Cliquer **Restart**
+
+> ✅ Pas besoin de relancer NPM Install à chaque mise à jour, sauf si `package.json` change.
+
+---
+
+## 📁 Structure des fichiers
 
 ```
-bot/
-├── commands/
-│   ├── start.js          # Commande /start + parrainage
-│   └── admin.js          # Panel admin complet
-├── handlers/
-│   ├── balance.js        # Affichage solde
-│   ├── bonus.js          # Bonus quotidien
-│   ├── referral.js       # Système parrainage
-│   ├── withdrawal.js     # Flux retrait multi-étapes
-│   ├── support.js        # Système support
-│   └── explanation.js    # Page explication
-├── models/
-│   ├── User.js           # Modèle utilisateur
-│   ├── Withdrawal.js     # Modèle retrait
-│   ├── Referral.js       # Modèle parrainage
-│   ├── Transaction.js    # Historique transactions
-│   ├── Settings.js       # Paramètres dynamiques
-│   ├── Admin.js          # Administrateurs
-│   └── Notification.js   # Notifications
-├── middleware/
-│   ├── auth.js           # Auth, vérif canal, anti-ban
-│   ├── admin.js          # Middleware admin
-│   └── antispam.js       # Protection anti-spam
-├── utils/
-│   ├── keyboards.js      # Claviers inline/persistants
-│   ├── messages.js       # Templates messages
-│   ├── countries.js      # Pays & opérateurs
-│   ├── notify.js         # Notifications admins
-│   └── logger.js         # Logger
-├── database/
-│   └── connect.js        # Connexion MongoDB
-├── bot.js                # Configuration Telegraf
-└── index.js              # Point d'entrée
+artifacts/api-server/
+├── bot/
+│   ├── index.js          ← Point d'entrée (Application Startup File)
+│   ├── bot.js            ← Configuration Telegraf
+│   ├── commands/         ← /start, /admin
+│   ├── handlers/         ← balance, bonus, retrait, support...
+│   ├── models/           ← MongoDB schemas
+│   ├── middleware/        ← auth, admin, anti-spam
+│   ├── utils/            ← keyboards, messages, notify...
+│   ├── database/         ← Connexion MongoDB
+│   └── assets/
+│       └── logo.png      ← Logo affiché au /start
+├── .env.example          ← Modèle des variables d'environnement
+├── package.json          ← Dépendances npm
+├── package-lock.json     ← Verrou des versions (généré)
+└── README.md             ← Ce fichier
 ```
 
-## 👨‍💼 Commandes admin
+---
 
-- `/admin` — Ouvre le panel administrateur
+## 🛡 Prérequis
 
-### Fonctionnalités admin :
-- 📊 Statistiques complètes (users, retraits, bonus)
-- 👤 Gestion utilisateurs (créditer, débiter, bannir)
-- 💸 Validation/refus des retraits
-- 📢 Diffusion globale (texte + image + bouton)
-- ⚙️ Paramètres dynamiques (bonus, canal, maintenance)
+- **MongoDB Atlas** : Créer un cluster gratuit sur [mongodb.com/atlas](https://www.mongodb.com/atlas) et récupérer l'URI de connexion
+- **Bot Telegram** : Créer le bot via [@BotFather](https://t.me/BotFather) et récupérer le token
+- **ID Telegram admin** : Obtenir via [@userinfobot](https://t.me/userinfobot)
 
-## 🌍 Pays et opérateurs supportés
+---
 
-| Pays | Opérateurs |
-|---|---|
-| 🇹🇬 Togo | TMoney, Moov Togo, Flooz |
-| 🇧🇯 Bénin | MTN, Moov, Celtiis |
-| 🇨🇮 Côte d'Ivoire | MTN, Orange Money, Moov, Wave |
-| 🇸🇳 Sénégal | Orange Money, Wave, Free Money |
-| 🇲🇱 Mali | Orange Money, Moov, Wave |
-| 🇧🇫 Burkina Faso | Orange Money, Moov, Coris Money |
-| 🇳🇪 Niger | Airtel Money, Moov Money |
-| 🇬🇳 Guinée | Orange Money, MTN |
-| 🇨🇲 Cameroun | MTN, Orange Money |
-| 🇨🇬 Congo Brazzaville | Airtel Money, MTN |
+## 🩺 Healthcheck
 
-## 🚀 Déploiement
+Une fois démarré, le bot expose :
 
-### Replit
-Le bot tourne automatiquement via le workflow configuré.
+- `GET /api/health` — Statut du bot et de la connexion MongoDB
+- `GET /api/stats` — Nombre d'utilisateurs et retraits en attente
 
-### Render / Railway
-```bash
-# Build command: pnpm install
-# Start command: node bot/index.js
-```
+---
 
-### VPS Linux
-```bash
-# Avec PM2
-npm install -g pm2
-pm2 start bot/index.js --name neocash-bot
-pm2 save
-pm2 startup
-```
+## 💬 Fonctionnalités
 
-## 🔐 Sécurité
-
-- ✅ Anti-spam (10 requêtes/10s par utilisateur)
-- ✅ Vérification canal obligatoire
-- ✅ Protection contre les multi-comptes
-- ✅ Validation des données (montants, numéros)
-- ✅ Middleware admin sécurisé
-- ✅ Logs d'erreurs complets
+| Fonctionnalité | Détail |
+|---------------|--------|
+| 👥 Parrainage | 120 FCFA par ami invité (configurable) |
+| 🎁 Bonus quotidien | 100 FCFA toutes les 24h (configurable) |
+| 💸 Retrait Mobile Money | Min 800 FCFA, 10 pays africains |
+| 🛡 Panel admin Telegram | Stats, gestion users, diffusion, paramètres |
+| 📢 Canal obligatoire | Vérification avant chaque action |
+| 📣 Canal de retrait | Notifications publiques automatiques |
+| 📞 Support personnalisé | Lien + message configurables par l'admin |
