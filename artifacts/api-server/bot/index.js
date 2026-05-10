@@ -5,12 +5,23 @@
 import 'dotenv/config';
 import express from 'express';
 import logger from './utils/logger.js';
+import adminRouter from './routes/admin.js';
 
 const PORT = process.env.PORT || 5000;
 
 // ─── Serveur Express (toujours démarré) ────────────────────────────────────────
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
+// Admin web routes
+app.use('/api', adminRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -98,6 +109,7 @@ async function startBot() {
     // Lancement du bot (sans await — bot.launch() est une boucle infinie en long-polling)
     const { createBot } = await import('./bot.js');
     const bot = createBot();
+    global.neocashBot = bot;
     bot.launch().catch((err) => {
       logger.error(`❌ Bot polling erreur : ${err.message}`);
     });
