@@ -8,7 +8,38 @@ import Withdrawal from '../models/Withdrawal.js';
 import Transaction from '../models/Transaction.js';
 import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting, setSetting } from '../models/Settings.js';
+import { notifyUser, notifyWithdrawalChannelPhoto } from '../utils/notify.js';
+import { formatAmount, escapeMarkdown } from '../utils/messages.js';
+import { createReadStream } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const LOGO_PATH = join(__dirname, '../assets/logo.png');
+
+function maskPhone(phone) {
+  const clean = String(phone).replace(/\s/g, '');
+  if (clean.length < 6) return clean;
+  const visible_start = clean.slice(0, Math.min(6, clean.length - 2));
+  const visible_end   = clean.slice(-2);
+  const hidden_count  = clean.length - visible_start.length - visible_end.length;
+  const hidden        = 'X'.repeat(hidden_count);
+  const all = visible_start + hidden + visible_end;
+  const prefix = all.startsWith('+') ? '+' : '';
+  const digits = all.replace('+', '');
+  const groups = digits.match(/.{1,2}/g) || [digits];
+  return prefix + groups.join(' ');
+}
+
+function maskName(name) {
+  if (!name) return '***';
+  const trimmed = name.trim();
+  if (trimmed.length <= 1) return trimmed + '*';
+  if (trimmed.length === 2) return trimmed[0] + '*';
+  if (trimmed.length === 3) return trimmed[0] + '**';
+  return trimmed[0] + '***' + trimmed.slice(-2);
+}
 
 const router = Router();
 
@@ -324,6 +355,44 @@ router.post('/admin/withdrawals/:id/approve', authMiddleware, async (req, res) =
 
     logger.info('Admin approve withdrawal', { id: wd.id, amount: wd.amount });
     res.json({ success: true, message: 'Retrait approuvé' });
+
+    // ─── Notifications Telegram (en arrière-plan) ───────────────────────────
+    setImmediate(async () => {
+      try {
+        const bot = global.neocashBot;
+        if (!bot) return;
+
+        // Notification à l'utilisateur
+        await notifyUser(
+          bot.telegram,
+          wd.telegramId,
+          `✅ *RETRAIT APPROUVÉ !*\n\n━━━━━━━━━━━━━━━━━━\n💰 Montant : *${formatAmount(wd.amount)}*\n📱 Opérateur : *${escapeMarkdown(wd.operator)}*\n📞 Numéro : \`${wd.phone}\`\n\n🎉 Ton paiement a été effectué !`,
+        );
+
+        // Notification canal de retrait
+        const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const botInfo = await bot.telegram.getMe();
+        const botLink = `https://t.me/${botInfo.username}`;
+        const caption =
+          `✅ *PAIEMENT EFFECTUÉ*\n\n` +
+          `🔍 Statut : Payé ✅\n` +
+          `👤 Bénéficiaire : *${escapeMarkdown(maskName(wd.beneficiaryName || wd.firstName))}*\n` +
+          `💰 Montant : *${formatAmount(wd.amount)}*\n` +
+          `📱 Opérateur : *${escapeMarkdown(wd.operator)}*\n` +
+          `📞 Numéro : \`${maskPhone(wd.phone)}\`\n` +
+          `📅 Date : ${now}\n\n` +
+          `💬 _Toi aussi tu peux gagner !_\n` +
+          `👉 Lien bot`;
+        await notifyWithdrawalChannelPhoto(
+          bot.telegram,
+          { source: createReadStream(LOGO_PATH) },
+          caption,
+          { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+        );
+      } catch (err) {
+        logger.warn('Approve notif error', { err: err.message });
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -351,6 +420,21 @@ router.post('/admin/withdrawals/:id/reject', authMiddleware, async (req, res) =>
 
     logger.info('Admin reject withdrawal', { id: wd.id });
     res.json({ success: true, message: 'Retrait refusé et montant remboursé' });
+
+    // ─── Notification Telegram (en arrière-plan) ────────────────────────────
+    setImmediate(async () => {
+      try {
+        const bot = global.neocashBot;
+        if (!bot) return;
+        await notifyUser(
+          bot.telegram,
+          wd.telegramId,
+          `❌ *RETRAIT REFUSÉ*\n\n━━━━━━━━━━━━━━━━━━\n💰 Montant : *${formatAmount(wd.amount)}*\n\n🔄 Ton solde a été remboursé.\nContacte le support si tu as des questions.`,
+        );
+      } catch (err) {
+        logger.warn('Reject notif error', { err: err.message });
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
