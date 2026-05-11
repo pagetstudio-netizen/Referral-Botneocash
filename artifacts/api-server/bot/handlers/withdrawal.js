@@ -23,19 +23,27 @@ import logger from '../utils/logger.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGO_PATH = join(__dirname, '../assets/logo.png');
 
-// Masque le numéro : +22507123456 → +225 07X XX XX 56 (garde début + 2 derniers chiffres)
+// Masque le numéro : +22507123456 → +225 07 XX XX 56 | 99935673 → 99 XX XX 73
 function maskPhone(phone) {
   const clean = phone.replace(/\s/g, '');
-  if (clean.length < 6) return clean;
-  const visible_start = clean.slice(0, Math.min(6, clean.length - 2));
-  const visible_end   = clean.slice(-2);
-  const hidden_count  = clean.length - visible_start.length - visible_end.length;
-  const hidden        = 'X'.repeat(hidden_count);
-  const all = visible_start + hidden + visible_end;
-  const prefix = all.startsWith('+') ? '+' : '';
-  const digits = all.replace('+', '');
-  const groups = digits.match(/.{1,2}/g) || [digits];
-  return prefix + groups.join(' ');
+  if (clean.length < 4) return clean;
+
+  let countryCode = '';
+  let local = clean;
+
+  if (clean.startsWith('+')) {
+    const m = clean.match(/^(\+\d{1,3})(\d+)$/);
+    if (m) { countryCode = m[1]; local = m[2]; }
+  }
+
+  const start = local.slice(0, 2);
+  const end   = local.slice(-2);
+  const hidden = local.length > 4 ? 'X'.repeat(local.length - 4) : '';
+  const masked = start + hidden + end;
+  const groups = masked.match(/.{1,2}/g) || [masked];
+  const localPart = groups.join(' ');
+
+  return countryCode ? `${countryCode} ${localPart}` : localPart;
 }
 
 // Masque le nom : "Kikou" → "K···ou", "Jean" → "J··n", "Al" → "A·"
