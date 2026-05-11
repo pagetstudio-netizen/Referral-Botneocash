@@ -38,15 +38,15 @@ function maskPhone(phone) {
   return prefix + groups.join(' ');
 }
 
-// Masque le nom : "Kikou" → "K***ou", "Jean" → "J**n", "Al" → "A*"
+// Masque le nom : "Kikou" → "K···ou", "Jean" → "J··n", "Al" → "A·"
 function maskName(name) {
-  if (!name) return '***';
+  if (!name) return '···';
   const trimmed = name.trim();
-  if (trimmed.length <= 1) return trimmed + '*';
-  if (trimmed.length === 2) return trimmed[0] + '*';
-  if (trimmed.length === 3) return trimmed[0] + '**';
-  // 4+ chars : premier + *** + 2 derniers
-  return trimmed[0] + '***' + trimmed.slice(-2);
+  if (trimmed.length <= 1) return trimmed + '·';
+  if (trimmed.length === 2) return trimmed[0] + '·';
+  if (trimmed.length === 3) return trimmed[0] + '··';
+  // 4+ chars : premier + ··· + 2 derniers
+  return trimmed[0] + '···' + trimmed.slice(-2);
 }
 
 // Sessions en mémoire pour le flux multi-étapes
