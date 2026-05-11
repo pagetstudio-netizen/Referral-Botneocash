@@ -210,42 +210,56 @@ export async function handleConfirmWithdrawal(ctx) {
 
     await ctx.answerCbQuery('✅ Demande envoyée !');
     await ctx.editMessageText(
-      `⏳ *DEMANDE ENVOYÉE !*\n\n━━━━━━━━━━━━━━━━━━\n✅ Ta demande de retrait a été enregistrée.\n💰 Montant : *${formatAmount(session.amount)}*\n📱 Opérateur : *${session.operator}*\n\nL'admin la traitera bientôt.\n━━━━━━━━━━━━━━━━━━\n💰 Nouveau solde : *${formatAmount(user.balance)}*`,
+      `⏳ *DEMANDE ENVOYÉE !*\n\n━━━━━━━━━━━━━━━━━━\n✅ Ta demande de retrait a été enregistrée.\n💰 Montant : *${formatAmount(session.amount)}*\n📱 Opérateur : *${escapeMarkdown(session.operator)}*\n\nL'admin la traitera bientôt.\n━━━━━━━━━━━━━━━━━━\n💰 Nouveau solde : *${formatAmount(user.balance)}*`,
       { parse_mode: 'Markdown' }
     );
 
-    // Notifier les admins
-    const notifText = `💸 *NOUVELLE DEMANDE DE RETRAIT*\n\n👤 ${escapeMarkdown(user.firstName)} ${escapeMarkdown(user.lastName || '')}\n🆔 \`${user.telegramId}\`\n📛 ${user.username ? '@' + escapeMarkdown(user.username) : 'N/A'}\n\n🌍 Pays : ${escapeMarkdown(session.countryName)}\n📱 Opérateur : ${escapeMarkdown(session.operator)}\n📞 Numéro : \`${session.phone}\`\n💰 Montant : *${formatAmount(session.amount)}*\n🔖 ID : \`${wd._id}\``;
+    logger.info('Withdrawal created', { userId, amount: session.amount, wdId: wd._id });
 
-    await notifyAdmins(ctx.telegram, {
-      text: notifText,
-      extra: { reply_markup: withdrawalAdminKeyboard(wd._id).reply_markup },
+    // ─── Notifications en arrière-plan (indépendant du flux principal) ──────────
+    setImmediate(async () => {
+      // Notifier les admins
+      try {
+        const notifText = `💸 *NOUVELLE DEMANDE DE RETRAIT*\n\n👤 ${escapeMarkdown(user.firstName)} ${escapeMarkdown(user.lastName || '')}\n🆔 \`${user.telegramId}\`\n📛 ${user.username ? '@' + escapeMarkdown(user.username) : 'N/A'}\n\n🌍 Pays : ${escapeMarkdown(session.countryName)}\n📱 Opérateur : ${escapeMarkdown(session.operator)}\n📞 Numéro : \`${session.phone}\`\n💰 Montant : *${formatAmount(session.amount)}*\n🔖 ID : \`${wd._id}\``;
+        await notifyAdmins(ctx.telegram, {
+          text: notifText,
+          extra: { reply_markup: withdrawalAdminKeyboard(wd._id).reply_markup },
+        });
+        logger.info('Admin notifié', { wdId: wd._id });
+      } catch (err) {
+        logger.error('Erreur notif admin', { err: err.message });
+      }
+
+      // Notifier le canal de retrait
+      try {
+        const botInfo = await ctx.telegram.getMe();
+        const botLink = `https://t.me/${botInfo.username}`;
+        const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        const caption =
+          `✅ *PAIEMENT EFFECTUÉ*\n\n` +
+          `🔍 Statut : Payé ✅\n` +
+          `👤 Bénéficiaire : *${escapeMarkdown(maskName(session.beneficiaryName || user.firstName))}*\n` +
+          `💰 Montant : *${formatAmount(session.amount)}*\n` +
+          `📱 Opérateur : *${escapeMarkdown(session.operator)}*\n` +
+          `📞 Numéro : \`${maskPhone(session.phone)}\`\n` +
+          `📅 Date : ${now}\n\n` +
+          `💬 _Toi aussi tu peux gagner !_\n` +
+          `👉 Lien bot`;
+
+        logger.info('Envoi photo canal retrait...', { channelPath: LOGO_PATH });
+        await notifyWithdrawalChannelPhoto(
+          ctx.telegram,
+          { source: createReadStream(LOGO_PATH) },
+          caption,
+          { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+        );
+        logger.info('Canal retrait notifié', { wdId: wd._id });
+      } catch (err) {
+        logger.error('Erreur notif canal retrait', { err: err.message, stack: err.stack });
+      }
     });
 
-    // ─── Notification canal de retrait (demande en attente) ────────────────────
-    const botInfo = await ctx.telegram.getMe();
-    const botLink = `https://t.me/${botInfo.username}`;
-    const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-    const pendingCaption =
-      `✅ *PAIEMENT EFFECTUÉ*\n\n` +
-      `🔍 Statut : Payé ✅\n` +
-      `👤 Bénéficiaire : *${escapeMarkdown(maskName(session.beneficiaryName || user.firstName))}*\n` +
-      `💰 Montant : *${formatAmount(session.amount)}*\n` +
-      `📱 Opérateur : *${escapeMarkdown(session.operator)}*\n` +
-      `📞 Numéro : \`${maskPhone(session.phone)}\`\n` +
-      `📅 Date : ${now}\n\n` +
-      `💬 _Toi aussi tu peux gagner !_\n` +
-      `👉 Lien bot`;
-
-    await notifyWithdrawalChannelPhoto(
-      ctx.telegram,
-      { source: createReadStream(LOGO_PATH) },
-      pendingCaption,
-      { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
-    );
-
-    logger.info('Withdrawal created', { userId, amount: session.amount, wdId: wd._id });
   } catch (err) {
     logger.error('handleConfirmWithdrawal error', { err: err.message });
     await ctx.reply('❌ Erreur lors du traitement. Contacte le support.', mainKeyboard);
