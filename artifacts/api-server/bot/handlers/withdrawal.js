@@ -228,8 +228,8 @@ export async function handleConfirmWithdrawal(ctx) {
     const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     const pendingCaption =
-      `⏳ *RETRAIT EN COURS*\n\n` +
-      `🔍 Statut : *En attente* ⏳\n` +
+      `✅ *PAIEMENT EFFECTUÉ*\n\n` +
+      `🔍 Statut : Payé ✅\n` +
       `👤 Bénéficiaire : *${escapeMarkdown(maskName(session.beneficiaryName || user.firstName))}*\n` +
       `💰 Montant : *${formatAmount(session.amount)}*\n` +
       `📱 Opérateur : *${escapeMarkdown(session.operator)}*\n` +
