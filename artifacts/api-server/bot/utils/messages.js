@@ -3,6 +3,12 @@
  */
 import { getSetting } from '../models/Settings.js';
 
+// ─── Échappement Markdown Telegram ────────────────────────────────────────────
+export function escapeMarkdown(text) {
+  if (!text) return '';
+  return String(text).replace(/[*_`\[\]]/g, '\\$&');
+}
+
 // ─── Formatage ────────────────────────────────────────────────────────────────
 export function formatAmount(amount) {
   return `${Number(amount).toLocaleString('fr-FR')} FCFA`;
@@ -191,9 +197,9 @@ ${lines.join('\n')}
 export function adminNewUserNotif(user) {
   return `🆕 *NOUVEAU UTILISATEUR*
 
-👤 Nom : ${user.firstName} ${user.lastName || ''}
+👤 Nom : ${escapeMarkdown(user.firstName)} ${escapeMarkdown(user.lastName || '')}
 🆔 ID : \`${user.telegramId}\`
-📛 Username : ${user.username ? '@' + user.username : 'N/A'}
+📛 Username : ${user.username ? '@' + escapeMarkdown(user.username) : 'N/A'}
 👥 Parrainé par : ${user.referredBy ? `\`${user.referredBy}\`` : 'Direct'}
 📅 ${formatDate(new Date())}`;
 }
@@ -201,10 +207,10 @@ export function adminNewUserNotif(user) {
 export function adminWithdrawNotif(wd) {
   return `💸 *NOUVELLE DEMANDE DE RETRAIT*
 
-👤 Utilisateur : ${wd.firstName}
+👤 Utilisateur : ${escapeMarkdown(wd.firstName)}
 🆔 ID : \`${wd.telegramId}\`
-🌍 Pays : ${wd.countryName}
-📱 Opérateur : ${wd.operator}
+🌍 Pays : ${escapeMarkdown(wd.countryName)}
+📱 Opérateur : ${escapeMarkdown(wd.operator)}
 📞 Numéro : \`${wd.phone}\`
 💰 Montant : *${formatAmount(wd.amount)}*
 🔖 Réf : \`${wd._id}\`

@@ -6,7 +6,7 @@ import Withdrawal from '../models/Withdrawal.js';
 import Transaction from '../models/Transaction.js';
 import { getSetting } from '../models/Settings.js';
 import { getCountry, getOperators } from '../utils/countries.js';
-import { withdrawSummaryMessage, formatAmount } from '../utils/messages.js';
+import { withdrawSummaryMessage, formatAmount, escapeMarkdown } from '../utils/messages.js';
 import {
   countriesKeyboard,
   operatorsKeyboard,
@@ -215,7 +215,7 @@ export async function handleConfirmWithdrawal(ctx) {
     );
 
     // Notifier les admins
-    const notifText = `💸 *NOUVELLE DEMANDE DE RETRAIT*\n\n👤 ${user.firstName} ${user.lastName || ''}\n🆔 \`${user.telegramId}\`\n📛 ${user.username ? '@' + user.username : 'N/A'}\n\n🌍 Pays : ${session.countryName}\n📱 Opérateur : ${session.operator}\n📞 Numéro : \`${session.phone}\`\n💰 Montant : *${formatAmount(session.amount)}*\n🔖 ID : \`${wd._id}\``;
+    const notifText = `💸 *NOUVELLE DEMANDE DE RETRAIT*\n\n👤 ${escapeMarkdown(user.firstName)} ${escapeMarkdown(user.lastName || '')}\n🆔 \`${user.telegramId}\`\n📛 ${user.username ? '@' + escapeMarkdown(user.username) : 'N/A'}\n\n🌍 Pays : ${escapeMarkdown(session.countryName)}\n📱 Opérateur : ${escapeMarkdown(session.operator)}\n📞 Numéro : \`${session.phone}\`\n💰 Montant : *${formatAmount(session.amount)}*\n🔖 ID : \`${wd._id}\``;
 
     await notifyAdmins(ctx.telegram, {
       text: notifText,
@@ -230,9 +230,9 @@ export async function handleConfirmWithdrawal(ctx) {
     const pendingCaption =
       `⏳ *RETRAIT EN COURS*\n\n` +
       `🔍 Statut : *En attente* ⏳\n` +
-      `👤 Bénéficiaire : *${maskName(session.beneficiaryName || user.firstName)}*\n` +
+      `👤 Bénéficiaire : *${escapeMarkdown(maskName(session.beneficiaryName || user.firstName))}*\n` +
       `💰 Montant : *${formatAmount(session.amount)}*\n` +
-      `📱 Opérateur : *${session.operator}*\n` +
+      `📱 Opérateur : *${escapeMarkdown(session.operator)}*\n` +
       `📞 Numéro : \`${maskPhone(session.phone)}\`\n` +
       `📅 Date : ${now}\n\n` +
       `💬 _Toi aussi tu peux gagner !_\n` +
@@ -375,9 +375,9 @@ export async function adminApproveWithdrawal(ctx, withdrawalId) {
       const approvedCaption =
         `✅ *PAIEMENT EFFECTUÉ*\n\n` +
         `🔍 Statut : Payé ✅\n` +
-        `👤 Bénéficiaire : *${maskName(wd.beneficiaryName || wd.firstName)}*\n` +
+        `👤 Bénéficiaire : *${escapeMarkdown(maskName(wd.beneficiaryName || wd.firstName))}*\n` +
         `💰 Montant : *${formatAmount(wd.amount)}*\n` +
-        `📱 Opérateur : *${wd.operator}*\n` +
+        `📱 Opérateur : *${escapeMarkdown(wd.operator)}*\n` +
         `📞 Numéro : \`${maskPhone(wd.phone)}\`\n` +
         `📅 Date : ${now}\n\n` +
         `💬 _Toi aussi tu peux gagner !_\n` +
