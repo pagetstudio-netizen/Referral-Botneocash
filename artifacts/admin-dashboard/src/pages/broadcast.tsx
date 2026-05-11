@@ -1,38 +1,92 @@
-import { useState } from "react";
-import { useSendBroadcast } from "@workspace/api-client-react";
+import { useState, useRef } from "react";
 
 export default function Broadcast() {
   const [message, setMessage] = useState("");
   const [buttonLabel, setButtonLabel] = useState("");
   const [buttonUrl, setButtonUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const broadcastMutation = useSendBroadcast({
-    mutation: {
-      onSuccess(data) {
-        setFeedback({ type: "success", text: data.message });
-        setMessage("");
-        setButtonLabel("");
-        setButtonUrl("");
-        setTimeout(() => setFeedback(null), 6000);
-      },
-      onError(e: any) {
-        setFeedback({ type: "error", text: e?.data?.error || "Erreur lors de la diffusion" });
-        setTimeout(() => setFeedback(null), 6000);
-      },
-    },
-  });
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ type: "error", text: "Fichier invalide. Choisissez une image (JPG, PNG, etc.)" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setFeedback({ type: "error", text: "Image trop lourde. Maximum 10 Mo." });
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
 
-  function handleSubmit(e: React.FormEvent) {
+  function removeImage() {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!message.trim()) return;
-    broadcastMutation.mutate({
-      data: {
-        message: message.trim(),
-        buttonLabel: buttonLabel.trim() || undefined,
-        buttonUrl: buttonUrl.trim() || undefined,
-      },
-    });
+    setIsPending(true);
+    setFeedback(null);
+
+    try {
+      let imageBase64: string | undefined;
+      let imageMimeType: string | undefined;
+
+      if (imageFile) {
+        imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(imageFile);
+        });
+        imageMimeType = imageFile.type;
+      }
+
+      const token = localStorage.getItem("neocash_token");
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          message: message.trim(),
+          buttonLabel: buttonLabel.trim() || undefined,
+          buttonUrl: buttonUrl.trim() || undefined,
+          imageBase64,
+          imageMimeType,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur lors de la diffusion");
+
+      setFeedback({ type: "success", text: data.message || "Diffusion lancée !" });
+      setMessage("");
+      setButtonLabel("");
+      setButtonUrl("");
+      removeImage();
+      setTimeout(() => setFeedback(null), 6000);
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Erreur lors de la diffusion" });
+      setTimeout(() => setFeedback(null), 6000);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -41,7 +95,7 @@ export default function Broadcast() {
     <div className="p-4 sm:p-6 md:p-8 max-w-2xl">
       <div className="mb-5 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-bold text-gray-900">Diffusion globale</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Envoyez un message a tous les utilisateurs actifs</p>
+        <p className="text-sm text-gray-500 mt-0.5">Envoyez un message à tous les utilisateurs actifs</p>
       </div>
 
       {feedback && (
@@ -63,10 +117,49 @@ export default function Broadcast() {
             onChange={(e) => setMessage(e.target.value)}
             rows={6}
             required
-            placeholder="Bonjour a tous ! Nous avons une annonce importante..."
+            placeholder="Bonjour à tous ! Nous avons une annonce importante..."
             className={`${inputClass} resize-none`}
           />
-          <p className="text-xs text-gray-400 mt-1">{message.length} caracteres</p>
+          <p className="text-xs text-gray-400 mt-1">{message.length} caractères</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="font-semibold text-gray-900 mb-1 text-sm">Image (optionnel)</h3>
+          <p className="text-xs text-gray-500 mb-3">Le message sera envoyé avec cette image en haut (JPG, PNG — max 10 Mo)</p>
+
+          {imagePreview ? (
+            <div className="relative inline-block">
+              <img
+                src={imagePreview}
+                alt="Aperçu"
+                className="h-36 w-auto rounded-lg object-cover border border-gray-200"
+              />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold hover:bg-red-600 shadow"
+              >
+                ✕
+              </button>
+              <p className="text-xs text-gray-500 mt-1">{imageFile?.name}</p>
+            </div>
+          ) : (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            >
+              <p className="text-2xl mb-1">🖼️</p>
+              <p className="text-sm text-gray-600 font-medium">Cliquez pour importer une image</p>
+              <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, GIF, WebP — max 10 Mo</p>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="hidden"
+          />
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
@@ -96,11 +189,20 @@ export default function Broadcast() {
           </div>
         </div>
 
-        {message && (
+        {(message || imagePreview) && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
-            <h3 className="font-semibold text-gray-900 mb-3 text-sm">Apercu</h3>
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm">Aperçu</h3>
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{message}</p>
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="Aperçu"
+                  className="w-full max-h-48 object-cover rounded-lg mb-3"
+                />
+              )}
+              {message && (
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">{message}</p>
+              )}
               {buttonLabel && buttonUrl && (
                 <div className="mt-3">
                   <span className="inline-block px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg">
@@ -114,16 +216,16 @@ export default function Broadcast() {
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-sm text-amber-800">
-            <strong>Attention :</strong> Ce message sera envoye a tous les utilisateurs non bannis. Cette action ne peut pas etre annulee.
+            <strong>Attention :</strong> Ce message sera envoyé à tous les utilisateurs non bannis. Cette action ne peut pas être annulée.
           </p>
         </div>
 
         <button
           type="submit"
-          disabled={broadcastMutation.isPending || !message.trim()}
+          disabled={isPending || !message.trim()}
           className="w-full py-3 px-6 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {broadcastMutation.isPending ? "Diffusion en cours..." : "Envoyer la diffusion"}
+          {isPending ? "Diffusion en cours..." : `Envoyer la diffusion${imageFile ? " avec image" : ""}`}
         </button>
       </form>
     </div>

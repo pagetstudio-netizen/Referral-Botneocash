@@ -568,13 +568,13 @@ router.delete('/admin/channels/:id', authMiddleware, async (req, res) => {
 // ─── POST /api/admin/broadcast ─────────────────────────────────────────────────
 router.post('/admin/broadcast', authMiddleware, async (req, res) => {
   try {
-    const { message, buttonLabel, buttonUrl } = req.body;
+    const { message, buttonLabel, buttonUrl, imageBase64, imageMimeType } = req.body;
     if (!message) return res.status(400).json({ error: 'Message requis' });
 
-    // Lancer la diffusion en arrière-plan
+    const imageBuffer = imageBase64 ? Buffer.from(imageBase64, 'base64') : null;
+
     res.json({ status: 'started', message: 'Diffusion lancée en arrière-plan' });
 
-    // Background broadcast
     setImmediate(async () => {
       try {
         const { queryAll } = await import('../database/db.js');
@@ -589,14 +589,22 @@ router.post('/admin/broadcast', authMiddleware, async (req, res) => {
         let sent = 0, failed = 0;
         for (const user of users) {
           try {
-            await bot.telegram.sendMessage(user.telegram_id, message, { parse_mode: 'Markdown', ...replyOpts });
+            if (imageBuffer) {
+              await bot.telegram.sendPhoto(
+                user.telegram_id,
+                { source: imageBuffer },
+                { caption: message, parse_mode: 'Markdown', ...replyOpts }
+              );
+            } else {
+              await bot.telegram.sendMessage(user.telegram_id, message, { parse_mode: 'Markdown', ...replyOpts });
+            }
             sent++;
           } catch {
             failed++;
           }
-          await new Promise(r => setTimeout(r, 35));
+          await new Promise(r => setTimeout(r, 50));
         }
-        logger.info('Broadcast terminé', { total: users.length, sent, failed });
+        logger.info('Broadcast terminé', { total: users.length, sent, failed, withImage: !!imageBuffer });
       } catch (err) {
         logger.error('Broadcast error', { err: err.message });
       }
