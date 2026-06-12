@@ -8,12 +8,13 @@ import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { request as httpRequest } from 'http';
+import { request as httpsRequest } from 'https';
 import logger from './utils/logger.js';
 import adminRouter from './routes/admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 // ─── Serveur Express (toujours démarré) ────────────────────────────────────────
 const app = express();
@@ -59,9 +60,7 @@ app.get('/api/stats', async (req, res) => {
 // ─── Tableau de bord admin (SPA — servi à la racine /) ───────────────────────
 const ADMIN_DIST = join(__dirname, '..', '..', 'admin-dashboard', 'dist', 'public');
 if (existsSync(ADMIN_DIST)) {
-  // Fichiers statiques (JS, CSS, images…) servis directement
   app.use(express.static(ADMIN_DIST, { index: false }));
-  // SPA fallback — toutes les routes non-API renvoient index.html
   app.get('*', (req, res) => {
     if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
     res.sendFile(join(ADMIN_DIST, 'index.html'));
@@ -73,8 +72,63 @@ app.listen(PORT, () => {
   logger.info(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
 });
 
-// ─── Keep-alive : auto-ping toutes les 4 minutes pour éviter la mise en veille ─
-function selfPing() {
+// ─── Keep-alive : ping externe toutes les 3 minutes ──────────────────────────
+//
+// ROOT CAUSE du bug "bot se rendort" :
+//   L'ancien selfPing() ciblait 127.0.0.1 (localhost). Les gestionnaires de
+//   processus comme Passenger (Plesk) détectent l'inactivité uniquement sur le
+//   trafic HTTP EXTERNE. Un ping interne est invisible pour eux → l'app dormait.
+//
+// CORRECTIF :
+//   On ping l'URL publique (APP_URL ou détection automatique Replit).
+//   Si l'URL externe n'est pas connue, on garde le fallback local EN PLUS.
+//
+function buildExternalUrl() {
+  // Priorité 1 : variable explicite (ex. https://cotedor.online)
+  if (process.env.APP_URL) return process.env.APP_URL + '/api/health';
+
+  // Priorité 2 : domaine Replit automatique
+  const replitDomain = process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG;
+  if (replitDomain && !replitDomain.includes('localhost')) {
+    const host = process.env.REPLIT_DEV_DOMAIN
+      ? process.env.REPLIT_DEV_DOMAIN
+      : `${replitDomain}.${process.env.REPL_OWNER}.repl.co`;
+    return `https://${host}/api/health`;
+  }
+
+  return null;
+}
+
+function pingUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    const isHttps = url.protocol === 'https:';
+    const lib = isHttps ? httpsRequest : httpRequest;
+    const req = lib(
+      {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname,
+        method: 'GET',
+        timeout: 10000,
+        headers: { 'User-Agent': 'MoonCrypto-KeepAlive/1.0' },
+        // Ne pas vérifier le cert auto-signé sur Replit dev
+        rejectUnauthorized: false,
+      },
+      (res) => {
+        logger.info(`💓 Keep-alive → ${urlString} [${res.statusCode}]`);
+      }
+    );
+    req.on('error', (err) => {
+      logger.warn(`⚠️  Keep-alive ping échoué (${urlString}) : ${err.message}`);
+    });
+    req.end();
+  } catch (err) {
+    logger.warn(`⚠️  Keep-alive URL invalide : ${err.message}`);
+  }
+}
+
+function pingLocalhost() {
   const req = httpRequest(
     { hostname: '127.0.0.1', port: PORT, path: '/api/health', method: 'GET', timeout: 8000 },
     () => {}
@@ -83,10 +137,48 @@ function selfPing() {
   req.end();
 }
 
-setInterval(selfPing, 4 * 60 * 1000);
-logger.info('💓 Keep-alive activé (ping /api/health toutes les 4 min)');
+const KEEPALIVE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 
-// ─── Démarrage asynchrone bot + Supabase ───────────────────────────────────────
+setInterval(() => {
+  // Toujours pinger en local (maintient la boucle d'événements active)
+  pingLocalhost();
+
+  // Pinger aussi l'URL externe pour garder le processus visible du proxy
+  const externalUrl = buildExternalUrl();
+  if (externalUrl) {
+    pingUrl(externalUrl);
+  }
+}, KEEPALIVE_INTERVAL_MS);
+
+logger.info(`💓 Keep-alive activé (ping externe + local toutes les ${KEEPALIVE_INTERVAL_MS / 60000} min)`);
+
+// ─── Watchdog bot polling : redémarre automatiquement si le polling plante ───
+const BOT_WATCHDOG_INTERVAL_MS = 60 * 1000; // vérifie toutes les 60 s
+
+setInterval(async () => {
+  if (!global.dbConnected) return; // DB pas encore prête, rien à faire
+  if (global.botRunning) return;   // tout va bien
+
+  logger.warn('🔁 Watchdog : bot polling inactif — tentative de redémarrage…');
+  try {
+    const { createBot } = await import('./bot.js');
+    const bot = createBot();
+    global.moonCryptoBot = bot;
+    bot.launch({
+      dropPendingUpdates: false,
+      allowedUpdates: ['message', 'callback_query', 'my_chat_member'],
+    }).catch((err) => {
+      logger.error(`❌ Bot polling erreur (watchdog) : ${err.message}`);
+      global.botRunning = false;
+    });
+    global.botRunning = true;
+    logger.info('✅ Watchdog : bot polling redémarré avec succès');
+  } catch (err) {
+    logger.error(`❌ Watchdog redémarrage échoué : ${err.message}`);
+  }
+}, BOT_WATCHDOG_INTERVAL_MS);
+
+// ─── Démarrage asynchrone bot + base de données ────────────────────────────────
 async function startBot() {
   const missingVars = [];
   if (!process.env.BOT_TOKEN) missingVars.push('BOT_TOKEN');
@@ -94,31 +186,30 @@ async function startBot() {
 
   if (missingVars.length > 0) {
     logger.warn(`⚠️  Variables d'environnement manquantes : ${missingVars.join(', ')}`);
-    logger.warn('   → Configure les secrets dans Replit puis redémarre le workflow.');
+    logger.warn('   → Configure les secrets puis redémarre le workflow.');
     logger.warn('   → Le serveur HTTP reste actif en attendant.');
     return;
   }
 
   try {
-    // Connexion Supabase (PostgreSQL)
     const connectDB = (await import('./database/connect.js')).default;
     await connectDB();
     global.dbConnected = true;
 
-    // Initialisation des paramètres
     const { initSettings } = await import('./models/Settings.js');
     await initSettings();
     logger.info('⚙️  Paramètres initialisés');
 
-    // Lancement du bot (sans await — bot.launch() est une boucle infinie en long-polling)
     const { createBot } = await import('./bot.js');
     const bot = createBot();
     global.moonCryptoBot = bot;
+
     bot.launch({
       dropPendingUpdates: true,
       allowedUpdates: ['message', 'callback_query', 'my_chat_member'],
     }).catch((err) => {
       logger.error(`❌ Bot polling erreur : ${err.message}`);
+      global.botRunning = false; // le watchdog prendra le relais
     });
     global.botRunning = true;
 
@@ -130,10 +221,10 @@ async function startBot() {
     logger.info('  /menu        — Afficher le menu');
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // Arrêt propre
     const shutdown = () => {
       logger.info('🛑 Arrêt du bot...');
-      bot.stop('SIGTERM');
+      global.botRunning = false;
+      if (global.moonCryptoBot) global.moonCryptoBot.stop('SIGTERM');
       process.exit(0);
     };
     process.once('SIGINT', shutdown);
