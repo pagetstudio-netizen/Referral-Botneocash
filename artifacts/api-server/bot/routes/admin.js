@@ -113,7 +113,7 @@ router.get('/admin/stats', authMiddleware, async (req, res) => {
     const [
       totalUsers, todayUsers, weekUsers, monthUsers, activeUsers, bannedUsers,
       totalWd, pendingWd, approvedWd, rejectedWd,
-      wdStats, bonusTotal,
+      wdStats, bonusTotal, languages,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ createdAt: { $gte: startOfDay } }),
@@ -127,12 +127,14 @@ router.get('/admin/stats', authMiddleware, async (req, res) => {
       Withdrawal.countDocuments({ status: 'rejected' }),
       Withdrawal.sumByStatus(),
       Transaction.sumBonuses(),
+      User.countByLanguage(),
     ]);
 
     res.json({
       users: { total: totalUsers, today: todayUsers, week: weekUsers, month: monthUsers, active: activeUsers, banned: bannedUsers },
       withdrawals: { total: totalWd, pending: pendingWd, approved: approvedWd, rejected: rejectedWd, totalApprovedAmount: wdStats.approved || 0 },
       bonuses: { total: bonusTotal },
+      languages,
     });
   } catch (err) {
     logger.error('Admin stats error', { err: err.message });

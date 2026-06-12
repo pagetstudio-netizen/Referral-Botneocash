@@ -123,8 +123,12 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     path.resolve(artifactDir, "bot/assets/logo.png"),
     path.resolve(assetsDir, "logo.png")
   );
+  await copyFile(
+    path.resolve(artifactDir, "bot/assets/banner.png"),
+    path.resolve(assetsDir, "banner.png")
+  );
 
-  console.log("✅ Static assets copied (schema.sql, logo.png)");
+  console.log("✅ Static assets copied (schema.sql, logo.png, banner.png)");
 }
 
 buildAll().catch((err) => {

@@ -1,7 +1,7 @@
 {
   "name": "@workspace/api-server",
   "version": "1.0.0",
-  "description": "Bot Telegram NeoCash — gains et parrainage Afrique de l'Ouest",
+  "description": "Bot Telegram Moon Crypto — gains et parrainage crypto",
   "private": true,
   "type": "module",
   "main": "bot/index.js",

@@ -99,6 +99,21 @@ const User = {
     return toRecord(row);
   },
 
+  async countByLanguage() {
+    const rows = await queryAll(
+      `SELECT COALESCE(NULLIF(language,''), 'fr') AS lang, COUNT(*)::int AS count
+       FROM users
+       GROUP BY COALESCE(NULLIF(language,''), 'fr')
+       ORDER BY count DESC`
+    );
+    const total = rows.reduce((s, r) => s + r.count, 0);
+    return rows.map(r => ({
+      lang: r.lang,
+      count: r.count,
+      percent: total > 0 ? Math.round((r.count / total) * 100) : 0,
+    }));
+  },
+
   async countDocuments(filter = {}) {
     let sql = 'SELECT COUNT(*) FROM users WHERE 1=1';
     const params = [];
