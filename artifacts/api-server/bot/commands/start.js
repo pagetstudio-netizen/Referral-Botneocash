@@ -142,9 +142,13 @@ export async function handleLanguageSet(ctx, lang) {
   const caption = await welcomeMessage(tg.first_name, lang);
   const keyboard = getMainKeyboard(lang);
 
+  await ctx.deleteMessage().catch(() => {});
+
   try {
-    await ctx.editMessageText(caption, { parse_mode: 'Markdown' }).catch(() => {});
-    await ctx.reply(caption, { parse_mode: 'Markdown', ...keyboard });
+    await ctx.replyWithPhoto(
+      { source: createReadStream(LOGO_PATH) },
+      { caption, parse_mode: 'Markdown', ...keyboard }
+    );
   } catch {
     await ctx.reply(caption, { parse_mode: 'Markdown', ...keyboard });
   }
