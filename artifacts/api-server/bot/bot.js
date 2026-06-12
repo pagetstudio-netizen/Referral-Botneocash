@@ -94,6 +94,62 @@ export function createBot() {
 
   bot.command('admin', requireAdmin, adminCommand);
 
+  // ─── /broadcast depuis le groupe admin ou en privé ───────────────────────────
+  bot.command(['broadcast', 'diffusion'], requireAdmin, async (ctx) => {
+    const rawArg = ctx.message.text.replace(/^\/\w+\s*/i, '').trim();
+
+    // Photo : soit jointe au message, soit en réponse à une photo
+    const photo = ctx.message.photo ?? ctx.message.reply_to_message?.photo ?? null;
+
+    // Parser le bouton inline : [Texte du bouton](https://url.com)
+    let broadcastText = rawArg;
+    let broadcastButton = null;
+    const btnMatch = rawArg.match(/\[(.+?)\]\((https?:\/\/[^\)]+)\)\s*$/);
+    if (btnMatch) {
+      broadcastButton = { label: btnMatch[1], url: btnMatch[2] };
+      broadcastText = rawArg.slice(0, btnMatch.index).trim();
+    }
+
+    if (!broadcastText && !photo) {
+      return ctx.reply(
+        `📢 *COMMANDE DIFFUSION*\n\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `*Formats supportés :*\n\n` +
+        `📝 Texte seul :\n\`/broadcast Votre message ici\`\n\n` +
+        `🔘 Texte + bouton :\n\`/broadcast Message [Bouton](https://url.com)\`\n\n` +
+        `🖼 Photo + légende :\n_Répondez à une photo_ avec\n\`/broadcast Légende de l'image\`\n\n` +
+        `🖼+🔘 Photo + bouton :\n_Répondez à une photo_ avec\n\`/broadcast Légende [Bouton](https://url)\`\n` +
+        `━━━━━━━━━━━━━━━━━━`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+
+    setAdminSession(ctx.from.id, {
+      action: 'broadcast_confirm',
+      broadcastText: broadcastText || undefined,
+      broadcastPhoto: photo || undefined,
+      broadcastButton: broadcastButton || undefined,
+    });
+
+    const lines = [];
+    if (photo)         lines.push(`🖼 *Image :* jointe`);
+    if (broadcastText) lines.push(`📝 *Message :*\n${broadcastText}`);
+    if (broadcastButton) lines.push(`🔘 *Bouton :* ${broadcastButton.label} → ${broadcastButton.url}`);
+
+    await ctx.reply(
+      `📢 *APERÇU DIFFUSION*\n\n━━━━━━━━━━━━━━━━━━\n${lines.join('\n\n')}\n━━━━━━━━━━━━━━━━━━\n\n⚠️ Ce message sera envoyé à *tous* les utilisateurs actifs.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '✅ Envoyer maintenant', callback_data: 'broadcast_confirm' }],
+            [{ text: '❌ Annuler', callback_data: 'broadcast_cancel' }],
+          ],
+        },
+      }
+    );
+  });
+
   bot.command('menu', (ctx) => {
     const lang = getLang(ctx);
     return ctx.reply(t(lang, 'menu_title'), { parse_mode: 'Markdown', ...getMainKeyboard(lang) });
@@ -335,11 +391,17 @@ export function createBot() {
 
   bot.action('toggle_maintenance', requireAdmin, handleToggleMaintenance);
 
-  // ─── Diffusion — Confirmation ─────────────────────────────────────────────────
+  // ─── Diffusion — Confirmation / Annulation ───────────────────────────────────
   bot.action('broadcast_confirm', requireAdmin, async (ctx) => {
     const session = getAdminSession(ctx.from.id);
-    if (!session || session.action !== 'broadcast_confirm') return ctx.answerCbQuery('Session expirée');
+    if (!session || session.action !== 'broadcast_confirm') return ctx.answerCbQuery('Session expirée', { show_alert: true });
     await executeBroadcast(ctx, session);
+  });
+
+  bot.action('broadcast_cancel', requireAdmin, async (ctx) => {
+    await ctx.answerCbQuery('❌ Diffusion annulée').catch(() => {});
+    deleteAdminSession(ctx.from.id);
+    await ctx.editMessageText('❌ *Diffusion annulée.*', { parse_mode: 'Markdown' }).catch(() => {});
   });
 
   bot.action('broadcast_add_button', requireAdmin, async (ctx) => {

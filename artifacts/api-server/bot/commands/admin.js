@@ -302,7 +302,7 @@ export async function handleTestAdminGroup(ctx) {
   try {
     await ctx.telegram.sendMessage(groupId,
       `✅ *TEST DE CONNEXION — GROUPE ADMIN*\n\n` +
-      `🤖 Le bot @neomcashbot est bien connecté à ce groupe !\n` +
+      `🤖 Le bot Moon Crypto Bot est bien connecté à ce groupe !\n` +
       `📢 Tu recevras ici les notifications suivantes :\n` +
       `• 🆕 Nouveaux utilisateurs\n` +
       `• 💸 Demandes de retrait\n` +
@@ -330,7 +330,7 @@ export async function handleTestWdChannel(ctx) {
   try {
     await ctx.telegram.sendMessage(channelId,
       `✅ *TEST DE CONNEXION — CANAL DE RETRAIT*\n\n` +
-      `🤖 Le bot @neomcashbot est bien connecté à ce canal !\n` +
+      `🤖 Le bot Moon Crypto Bot est bien connecté à ce canal !\n` +
       `💸 Les notifications de retrait apparaîtront ici :\n\n` +
       `*Exemple :*\n` +
       `💸 Retrait validé pour Jean Dupont\n` +
@@ -365,7 +365,7 @@ export async function handleSetDetectedGroup(ctx, chatId, role) {
     if (role === 'admin') {
       await ctx.telegram.sendMessage(id,
         `🎉 *Groupe Admin configuré avec succès !*\n\n` +
-        `🤖 Le bot @neomcashbot est maintenant connecté à ce groupe.\n` +
+        `🤖 Le bot Moon Crypto Bot est maintenant connecté à ce groupe.\n` +
         `📢 Tu recevras ici toutes les notifications importantes :\n` +
         `• 🆕 Nouveaux utilisateurs\n• 💸 Demandes de retrait\n• 🚫 Bannis\n\n` +
         `✅ Connexion vérifiée.`,
@@ -374,14 +374,14 @@ export async function handleSetDetectedGroup(ctx, chatId, role) {
     } else if (role === 'wd') {
       await ctx.telegram.sendMessage(id,
         `🎉 *Canal de retrait configuré avec succès !*\n\n` +
-        `🤖 Le bot @neomcashbot publiera ici les notifications de retrait.\n\n` +
+        `🤖 Le bot Moon Crypto Bot publiera ici les notifications de retrait.\n\n` +
         `✅ Connexion vérifiée.`,
         { parse_mode: 'Markdown' }
       );
     } else if (role === 'channel') {
       await ctx.telegram.sendMessage(id,
         `🎉 *Canal obligatoire configuré !*\n\n` +
-        `🤖 Le bot @neomcashbot vérifiera l'adhésion des utilisateurs à ce canal.\n\n` +
+        `🤖 Le bot Moon Crypto Bot vérifiera l'adhésion des utilisateurs à ce canal.\n\n` +
         `✅ Connexion vérifiée.`,
         { parse_mode: 'Markdown' }
       );
@@ -628,7 +628,7 @@ export async function handleAdminInput(ctx) {
   const session = adminSessions.get(userId);
   if (!session) return false;
 
-  const text = ctx.message?.text;
+  const text = ctx.message?.text || ctx.message?.caption;
   const photo = ctx.message?.photo;
 
   switch (session.action) {
