@@ -125,7 +125,10 @@ async function startBot() {
     const { createBot } = await import('./bot.js');
     const bot = createBot();
     global.moonCryptoBot = bot;
-    bot.launch().catch((err) => {
+    bot.launch({
+      dropPendingUpdates: true,
+      allowedUpdates: ['message', 'callback_query', 'my_chat_member'],
+    }).catch((err) => {
       logger.error(`❌ Bot polling erreur : ${err.message}`);
     });
     global.botRunning = true;

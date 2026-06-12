@@ -174,16 +174,35 @@ async function sendMultiVerifyMessage(ctx, missingChannels) {
   }).catch(() => {});
 }
 
+// ─── Cache isUserAdmin (TTL 5 min) ────────────────────────────────────────────
+const _adminCache = new Map();
+const ADMIN_CACHE_TTL = 5 * 60_000;
+
+export function clearAdminCache(telegramId) {
+  if (telegramId) _adminCache.delete(Number(telegramId));
+  else _adminCache.clear();
+}
+
 // ─── Utilitaire admin ──────────────────────────────────────────────────────────
 export async function isUserAdmin(telegramId) {
   if (!telegramId) return false;
+  const id = Number(telegramId);
+
+  const cached = _adminCache.get(id);
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
+
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(Number).filter(Boolean);
-  if (adminIds.includes(Number(telegramId))) return true;
+  if (adminIds.includes(id)) {
+    _adminCache.set(id, { value: true, expiresAt: Date.now() + ADMIN_CACHE_TTL });
+    return true;
+  }
 
   try {
     const Admin = (await import('../models/Admin.js')).default;
-    const admin = await Admin.findOne({ telegramId: Number(telegramId) });
-    return !!admin;
+    const admin = await Admin.findOne({ telegramId: id });
+    const result = !!admin;
+    _adminCache.set(id, { value: result, expiresAt: Date.now() + ADMIN_CACHE_TTL });
+    return result;
   } catch {
     return false;
   }
