@@ -32,7 +32,7 @@ task = "shell.exec"
 args = "cd artifacts/api-server && node bot/index.js"
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
 
 [postMerge]
