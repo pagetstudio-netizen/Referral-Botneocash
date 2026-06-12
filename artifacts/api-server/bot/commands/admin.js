@@ -5,17 +5,22 @@ import User from '../models/User.js';
 import Withdrawal from '../models/Withdrawal.js';
 import Referral from '../models/Referral.js';
 import Transaction from '../models/Transaction.js';
+import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting, setSetting } from '../models/Settings.js';
 import {
   adminKeyboard,
   adminSettingsKeyboard,
   adminWithdrawalsKeyboard,
+  adminChannelsKeyboard,
+  channelTypeKeyboard,
+  channelLangKeyboard,
   backToAdminKeyboard,
   channelsTestKeyboard,
   detectedGroupKeyboard,
   userAdminKeyboard,
 } from '../utils/keyboards.js';
 import { formatAmount, formatDate } from '../utils/messages.js';
+import { LANGUAGE_NAMES } from '../utils/i18n.js';
 import { notifyUser } from '../utils/notify.js';
 import logger from '../utils/logger.js';
 import { Markup } from 'telegraf';
@@ -96,10 +101,7 @@ export async function handleAdminStats(ctx) {
 export async function handleAdminChannels(ctx) {
   await ctx.answerCbQuery().catch(() => {});
 
-  const [channel, group, site, withdrawalChannel, adminGroupId] = await Promise.all([
-    getSetting('required_channel'),
-    getSetting('required_group'),
-    getSetting('required_site'),
+  const [withdrawalChannel, adminGroupId] = await Promise.all([
     getSetting('withdrawal_channel'),
     getSetting('admin_group_id'),
   ]);
@@ -119,28 +121,174 @@ export async function handleAdminChannels(ctx) {
   }
 
   const results = await Promise.all([
-    getChatSummary(channel, '📢 *Canal obligatoire*', 'abonnés'),
-    getChatSummary(group, '👥 *Groupe obligatoire*', 'membres'),
     getChatSummary(withdrawalChannel, '💸 *Canal de retrait*', 'abonnés'),
     getChatSummary(adminGroupId, '🛡 *Groupe administrateur*', 'membres'),
   ]);
 
   const lines = results.filter(Boolean);
-  if (site) lines.push(`🌐 *Site web obligatoire*\n🔗 ${site}`);
-
   const body = lines.length
     ? lines.join('\n\n━━━━━━━━━━━━━━━━━━\n')
-    : '❌ Aucun canal ou groupe configuré.';
+    : '';
+
+  // Canaux obligatoires par langue
+  const reqChannels = await RequiredChannel.findAllAdmin();
+  let reqLines = '';
+  if (reqChannels.length) {
+    const LANG_FLAGS = { fr: '🇫🇷', en: '🇬🇧', de: '🇩🇪', zh: '🇨🇳', null: '🌍' };
+    reqLines = '\n\n━━━━━━━━━━━━━━━━━━\n📋 *CANAUX OBLIGATOIRES* (' + reqChannels.length + ')\n\n' +
+      reqChannels.map(ch => {
+        const flag = LANG_FLAGS[ch.language] || '🌍';
+        const langLabel = ch.language ? (LANGUAGE_NAMES[ch.language] || ch.language) : 'Toutes les langues';
+        const typeIcon = ch.type === 'channel' ? '📢' : ch.type === 'group' ? '👥' : '🌐';
+        return `${flag} ${typeIcon} *${ch.label || ch.chatIdOrUrl}*\n🆔 \`${ch.chatIdOrUrl}\` | ${langLabel} | ${ch.isActive ? '✅' : '❌'}`;
+      }).join('\n\n');
+  } else {
+    reqLines = '\n\n━━━━━━━━━━━━━━━━━━\n📋 *CANAUX OBLIGATOIRES*\n\n❌ Aucun canal obligatoire configuré.';
+  }
 
   const text =
-    `📡 *CANAUX & GROUPES*\n\n━━━━━━━━━━━━━━━━━━\n${body}\n━━━━━━━━━━━━━━━━━━\n\n` +
-    `💡 *Détection automatique :* Ajoute le bot dans un groupe — il te demandera son rôle automatiquement.\n` +
-    `🔌 Utilise les boutons ci-dessous pour tester les connexions.`;
+    `📡 *CANAUX & GROUPES*\n\n━━━━━━━━━━━━━━━━━━\n${body || '❌ Aucun canal de retrait/admin configuré.'}${reqLines}\n\n━━━━━━━━━━━━━━━━━━\n\n` +
+    `💡 *Détection auto :* Ajoute le bot dans un groupe — il te proposera son rôle automatiquement.`;
 
   await ctx.editMessageText(text, {
     parse_mode: 'Markdown',
-    ...channelsTestKeyboard,
-  }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...channelsTestKeyboard }));
+    ...adminChannelsKeyboard,
+  }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...adminChannelsKeyboard }));
+}
+
+// ─── Ajouter un canal obligatoire — début du flux ─────────────────────────────
+export async function handleAddReqChannel(ctx) {
+  await ctx.answerCbQuery().catch(() => {});
+  adminSessions.set(ctx.from.id, { action: 'add_channel_label' });
+  await ctx.reply(
+    `➕ *AJOUTER UN CANAL OBLIGATOIRE*\n\n` +
+    `Étape 1/4 — Entrez le *nom affiché* de ce canal :\n\n` +
+    `_Exemple : "Retrait NeoCash FR", "NeoCash EN Group"_`,
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('❌ Annuler', 'admin_channels')]]) }
+  );
+}
+
+// ─── Liste des canaux obligatoires avec boutons suppression ───────────────────
+export async function handleListReqChannels(ctx) {
+  await ctx.answerCbQuery().catch(() => {});
+  const channels = await RequiredChannel.findAllAdmin();
+
+  if (!channels.length) {
+    return ctx.reply(
+      '📋 *CANAUX OBLIGATOIRES*\n\nAucun canal configuré.\nUtilise "➕ Ajouter" pour en créer un.',
+      { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('➕ Ajouter', 'add_req_channel'), Markup.button.callback('◀️ Retour', 'admin_channels')]]) }
+    );
+  }
+
+  const LANG_FLAGS = { fr: '🇫🇷', en: '🇬🇧', de: '🇩🇪', zh: '🇨🇳' };
+  const rows = channels.map(ch => {
+    const flag = ch.language ? (LANG_FLAGS[ch.language] || '🌍') : '🌍';
+    const langShort = ch.language ? ch.language.toUpperCase() : 'ALL';
+    const typeIcon = ch.type === 'channel' ? '📢' : ch.type === 'group' ? '👥' : '🌐';
+    const label = `🗑 ${typeIcon} ${flag} [${langShort}] ${ch.label || ch.chatIdOrUrl}`;
+    return [Markup.button.callback(label, `del_req_ch_${ch.id}`)];
+  });
+
+  rows.push([Markup.button.callback('➕ Ajouter', 'add_req_channel'), Markup.button.callback('◀️ Retour', 'admin_channels')]);
+
+  const text =
+    `📋 *CANAUX OBLIGATOIRES* (${channels.length})\n\n` +
+    `Clique sur un canal pour le *supprimer* :\n\n` +
+    channels.map(ch => {
+      const flag = ch.language ? (LANG_FLAGS[ch.language] || '🌍') : '🌍';
+      const langLabel = ch.language ? (LANGUAGE_NAMES[ch.language] || ch.language) : 'Toutes les langues';
+      const typeIcon = ch.type === 'channel' ? '📢' : ch.type === 'group' ? '👥' : '🌐';
+      return `${flag} ${typeIcon} *${ch.label || ch.chatIdOrUrl}*\n🆔 \`${ch.chatIdOrUrl}\` | ${langLabel}`;
+    }).join('\n\n━━━━━━━━━━━━━━━━━━\n');
+
+  await ctx.reply(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) });
+}
+
+// ─── Supprimer un canal obligatoire ──────────────────────────────────────────
+export async function handleDeleteReqChannel(ctx, channelId) {
+  await ctx.answerCbQuery('🗑 Suppression...').catch(() => {});
+  const ch = await RequiredChannel.findById(Number(channelId));
+  if (!ch) return ctx.answerCbQuery('❌ Introuvable').catch(() => {});
+  await RequiredChannel.delete(Number(channelId));
+  await ctx.editMessageText(
+    `✅ *Canal supprimé*\n\n🗑 *${ch.label || ch.chatIdOrUrl}* a été retiré de la liste des canaux obligatoires.`,
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('📋 Voir la liste', 'list_req_channels'), Markup.button.callback('◀️ Retour', 'admin_channels')]]) }
+  ).catch(() => ctx.reply('✅ Canal supprimé.'));
+  logger.info('Canal obligatoire supprimé', { channelId, label: ch.label });
+}
+
+// ─── Finaliser l'ajout d'un canal (après sélection de langue) ────────────────
+export async function handleChannelLangSelect(ctx, lang) {
+  await ctx.answerCbQuery().catch(() => {});
+  const userId = ctx.from.id;
+  const session = adminSessions.get(userId);
+  if (!session || !session.add_channel_id) return;
+
+  const channelLang = lang === 'all' ? null : lang;
+  const LANG_FLAGS = { fr: '🇫🇷', en: '🇬🇧', de: '🇩🇪', zh: '🇨🇳', null: '🌍' };
+  const flag = LANG_FLAGS[channelLang] || '🌍';
+  const langLabel = channelLang ? (LANGUAGE_NAMES[channelLang] || channelLang) : 'Toutes les langues';
+
+  try {
+    const ch = await RequiredChannel.create({
+      label: session.add_channel_label,
+      type: session.add_channel_type,
+      chatIdOrUrl: session.add_channel_id,
+      language: channelLang,
+      displayOrder: 0,
+    });
+
+    adminSessions.delete(userId);
+
+    await ctx.editMessageText(
+      `✅ *Canal obligatoire ajouté !*\n\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `${flag} 📌 *${session.add_channel_label}*\n` +
+      `🆔 \`${session.add_channel_id}\`\n` +
+      `🏷 Type : ${session.add_channel_type}\n` +
+      `🌐 Langue : ${langLabel}\n` +
+      `━━━━━━━━━━━━━━━━━━\n\n` +
+      `${channelLang
+        ? `✅ Seuls les utilisateurs en *${langLabel}* devront rejoindre ce canal.`
+        : `✅ *Tous les utilisateurs* devront rejoindre ce canal.`}`,
+      { parse_mode: 'Markdown', ...Markup.inlineKeyboard([
+        [Markup.button.callback('➕ Ajouter un autre', 'add_req_channel'), Markup.button.callback('📋 Liste', 'list_req_channels')],
+        [Markup.button.callback('◀️ Retour Canaux', 'admin_channels')],
+      ]) }
+    ).catch(async () => {
+      await ctx.reply(`✅ Canal obligatoire ajouté : *${session.add_channel_label}* (${langLabel})`, { parse_mode: 'Markdown' });
+    });
+
+    logger.info('Canal obligatoire ajouté', { label: session.add_channel_label, lang: channelLang, id: session.add_channel_id });
+  } catch (err) {
+    logger.error('handleChannelLangSelect error', { err: err.message });
+    await ctx.reply('❌ Erreur lors de l\'ajout. Réessaie.').catch(() => {});
+    adminSessions.delete(userId);
+  }
+}
+
+// ─── Sélection du type de canal ───────────────────────────────────────────────
+export async function handleChannelTypeSelect(ctx, type) {
+  await ctx.answerCbQuery().catch(() => {});
+  const userId = ctx.from.id;
+  const session = adminSessions.get(userId);
+  if (!session) return;
+
+  session.add_channel_type = type;
+  session.action = 'add_channel_id';
+  adminSessions.set(userId, session);
+
+  const typeLabel = type === 'channel' ? '📢 Canal Telegram' : type === 'group' ? '👥 Groupe Telegram' : '🌐 Site Web';
+  const idExample = type === 'website' ? 'https://monsite.com' : '@mon_canal ou -100123456789';
+
+  await ctx.editMessageText(
+    `➕ *AJOUTER UN CANAL OBLIGATOIRE*\n\n` +
+    `📌 Nom : *${session.add_channel_label}*\n` +
+    `🏷 Type : ${typeLabel}\n\n` +
+    `Étape 3/4 — Entrez l'identifiant :\n\n` +
+    `_Exemple : \`${idExample}\`_`,
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('❌ Annuler', 'admin_channels')]]) }
+  ).catch(() => {});
 }
 
 // ─── Test connexion groupe admin ──────────────────────────────────────────────
@@ -509,6 +657,40 @@ export async function handleAdminInput(ctx) {
       await setSetting('min_withdraw', val);
       await ctx.reply(`✅ Retrait minimum mis à jour : *${formatAmount(val)}*`, { parse_mode: 'Markdown' });
       adminSessions.delete(userId);
+      return true;
+    }
+    case 'add_channel_label': {
+      if (!text || text.length < 2 || text.length > 60) {
+        await ctx.reply('⚠️ Nom invalide (2–60 caractères). Réessaie :');
+        return true;
+      }
+      session.add_channel_label = text;
+      session.action = 'waiting_channel_type';
+      adminSessions.set(userId, session);
+      await ctx.reply(
+        `➕ *AJOUTER UN CANAL OBLIGATOIRE*\n\n` +
+        `📌 Nom : *${text}*\n\n` +
+        `Étape 2/4 — Choisissez le *type* :`,
+        { parse_mode: 'Markdown', ...channelTypeKeyboard }
+      );
+      return true;
+    }
+    case 'add_channel_id': {
+      if (!text || text.length < 2) {
+        await ctx.reply('⚠️ Identifiant invalide. Réessaie :');
+        return true;
+      }
+      session.add_channel_id = text.trim();
+      session.action = 'waiting_channel_lang';
+      adminSessions.set(userId, session);
+      await ctx.reply(
+        `➕ *AJOUTER UN CANAL OBLIGATOIRE*\n\n` +
+        `📌 Nom : *${session.add_channel_label}*\n` +
+        `🆔 ID : \`${text.trim()}\`\n\n` +
+        `Étape 4/4 — Choisissez la *langue cible* :\n\n` +
+        `_"Toutes les langues" = visible pour tous les utilisateurs_`,
+        { parse_mode: 'Markdown', ...channelLangKeyboard }
+      );
       return true;
     }
     case 'set_required_channel': {

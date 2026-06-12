@@ -128,6 +128,9 @@ CREATE TABLE IF NOT EXISTS required_channels (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Filtre par langue : NULL = toutes les langues, sinon 'fr'/'en'/'de'/'zh'
+ALTER TABLE required_channels ADD COLUMN IF NOT EXISTS language TEXT DEFAULT NULL;
+
 CREATE TABLE IF NOT EXISTS channel_verifications (
   id BIGSERIAL PRIMARY KEY,
   channel_id INTEGER NOT NULL,

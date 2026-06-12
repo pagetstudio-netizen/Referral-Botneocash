@@ -13,7 +13,7 @@ import { welcomeMessage, buildMultiChannelVerifyMessage } from '../utils/message
 import { getMainKeyboard, multiChannelVerifyKeyboard, languageKeyboard } from '../utils/keyboards.js';
 import { notifyAdmins } from '../utils/notify.js';
 import { creditPendingReferral } from '../utils/creditReferral.js';
-import { isUserAdmin, getMissingChannels } from '../middleware/auth.js';
+import { isUserAdmin, getMissingChannels, clearMembershipCache } from '../middleware/auth.js';
 import { t, getLang } from '../utils/i18n.js';
 import logger from '../utils/logger.js';
 
@@ -111,11 +111,13 @@ export async function handleLanguageSet(ctx, lang) {
   const tg = ctx.from;
   const args = ctx.payload || '';
 
-  // ─── Vérification canaux obligatoires ─────────────────────────────────────────
+  // ─── Vérification canaux obligatoires (filtrés par langue) ───────────────────
   const adminUser = await isUserAdmin(tg.id);
+  // Vide le cache de membership pour que la nouvelle langue soit prise en compte
+  clearMembershipCache(tg.id);
   if (!adminUser) {
     try {
-      const channels = await RequiredChannel.findAll();
+      const channels = await RequiredChannel.findAllForLang(lang);
       if (channels.length > 0) {
         const missing = await getMissingChannels(ctx.telegram, tg.id, channels);
         if (missing.length > 0) {

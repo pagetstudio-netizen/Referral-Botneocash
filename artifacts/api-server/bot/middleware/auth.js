@@ -90,7 +90,7 @@ function _invalidateMembership(userId) {
   _membershipCache.delete(userId);
 }
 
-// ─── Vérifier adhésion aux canaux obligatoires (multi-canaux) ─────────────────
+// ─── Vérifier adhésion aux canaux obligatoires (multi-canaux, filtré par langue)
 export async function checkChannelMembership(ctx, next) {
   if (ctx.callbackQuery?.data === 'verify_channel') return next();
 
@@ -101,17 +101,21 @@ export async function checkChannelMembership(ctx, next) {
   if (isAdmin) return next();
 
   try {
-    const channels = await RequiredChannel.findAll();
+    // Filtrer les canaux selon la langue de l'utilisateur
+    const userLang = ctx.userLang || ctx.dbUser?.language || 'fr';
+    const channels = await RequiredChannel.findAllForLang(userLang);
     if (!channels.length) return next();
 
-    const cached = _membershipCache.get(userId);
+    // Clé cache incluant la langue pour éviter les conflits entre langues
+    const cacheKey = `${userId}_${userLang}`;
+    const cached = _membershipCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
       if (cached.missing.length === 0) return next();
       return sendMultiVerifyMessage(ctx, cached.missing);
     }
 
     const missing = await getMissingChannels(ctx.telegram, userId, channels);
-    _membershipCache.set(userId, { missing, expiresAt: Date.now() + MEMBERSHIP_TTL });
+    _membershipCache.set(cacheKey, { missing, expiresAt: Date.now() + MEMBERSHIP_TTL });
 
     if (!missing.length) return next();
     return sendMultiVerifyMessage(ctx, missing);
@@ -146,9 +150,18 @@ export async function getMissingChannels(telegram, userId, channels) {
   return missing;
 }
 
-// ─── Invalider le cache après vérification réussie ────────────────────────────
+// ─── Invalider le cache après vérification réussie ou changement de langue ────
 export function clearMembershipCache(userId) {
-  _invalidateMembership(userId);
+  // Supprimer toutes les entrées de cache pour cet utilisateur (toutes les langues)
+  const keysToDelete = [];
+  for (const key of _membershipCache.keys()) {
+    if (key === String(userId) || key.startsWith(`${userId}_`)) {
+      keysToDelete.push(key);
+    }
+  }
+  for (const key of keysToDelete) {
+    _membershipCache.delete(key);
+  }
 }
 
 async function sendMultiVerifyMessage(ctx, missingChannels) {

@@ -131,6 +131,45 @@ export const adminKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('🔄 Redémarrer', 'admin_restart')],
 ]);
 
+// ─── Clavier gestion canaux obligatoires ──────────────────────────────────────
+export const adminChannelsKeyboard = Markup.inlineKeyboard([
+  [
+    Markup.button.callback('➕ Ajouter un canal/groupe', 'add_req_channel'),
+  ],
+  [
+    Markup.button.callback('📋 Liste des canaux', 'list_req_channels'),
+  ],
+  [
+    Markup.button.callback('🔌 Tester Groupe Admin', 'test_admin_group'),
+    Markup.button.callback('🔌 Tester Canal Retrait', 'test_wd_channel'),
+  ],
+  [Markup.button.callback('◀️ Retour au panel', 'admin_back')],
+]);
+
+// ─── Clavier type de canal (création) ────────────────────────────────────────
+export const channelTypeKeyboard = Markup.inlineKeyboard([
+  [
+    Markup.button.callback('📢 Canal Telegram', 'ch_type_channel'),
+    Markup.button.callback('👥 Groupe Telegram', 'ch_type_group'),
+  ],
+  [Markup.button.callback('🌐 Site Web', 'ch_type_website')],
+  [Markup.button.callback('❌ Annuler', 'admin_channels')],
+]);
+
+// ─── Clavier langue canal obligatoire (création) ─────────────────────────────
+export const channelLangKeyboard = Markup.inlineKeyboard([
+  [
+    Markup.button.callback('🇫🇷 Français seulement', 'ch_lang_fr'),
+    Markup.button.callback('🇬🇧 English only', 'ch_lang_en'),
+  ],
+  [
+    Markup.button.callback('🇩🇪 Deutsch only', 'ch_lang_de'),
+    Markup.button.callback('🇨🇳 中文 only', 'ch_lang_zh'),
+  ],
+  [Markup.button.callback('🌍 Toutes les langues', 'ch_lang_all')],
+  [Markup.button.callback('❌ Annuler', 'admin_channels')],
+]);
+
 // ─── Clavier paramètres admin ─────────────────────────────────────────────────
 export const adminSettingsKeyboard = Markup.inlineKeyboard([
   [

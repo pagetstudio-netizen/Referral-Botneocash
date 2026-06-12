@@ -28,6 +28,11 @@ import {
   getAdminSession,
   deleteAdminSession,
   setAdminSession,
+  handleAddReqChannel,
+  handleListReqChannels,
+  handleDeleteReqChannel,
+  handleChannelTypeSelect,
+  handleChannelLangSelect,
 } from './commands/admin.js';
 import { handleBalance } from './handlers/balance.js';
 import { handleBonus } from './handlers/bonus.js';
@@ -143,7 +148,7 @@ export function createBot() {
       const { default: RequiredChannel } = await import('./models/RequiredChannel.js');
       const { getMissingChannels } = await import('./middleware/auth.js');
 
-      const channels = await RequiredChannel.findAll();
+      const channels = await RequiredChannel.findAllForLang(lang);
 
       if (!channels.length) {
         ctx.dbUser.isVerified = true;
@@ -157,6 +162,7 @@ export function createBot() {
       }
 
       const stillMissing = await getMissingChannels(ctx.telegram, userId, channels);
+
 
       if (stillMissing.length > 0) {
         const names = stillMissing.map(ch => ch.label || ch.chatIdOrUrl).join(', ');
@@ -214,6 +220,24 @@ export function createBot() {
   bot.action('admin_channels', requireAdmin, handleAdminChannels);
   bot.action('test_admin_group', requireAdmin, handleTestAdminGroup);
   bot.action('test_wd_channel', requireAdmin, handleTestWdChannel);
+
+  // ─── Callbacks gestion canaux obligatoires ──────────────────────────────────
+  bot.action('add_req_channel', requireAdmin, handleAddReqChannel);
+  bot.action('list_req_channels', requireAdmin, handleListReqChannels);
+  bot.action(/^del_req_ch_(\d+)$/, requireAdmin, (ctx) => handleDeleteReqChannel(ctx, ctx.match[1]));
+
+  // Type de canal lors de la création
+  bot.action('ch_type_channel', requireAdmin, (ctx) => handleChannelTypeSelect(ctx, 'channel'));
+  bot.action('ch_type_group', requireAdmin, (ctx) => handleChannelTypeSelect(ctx, 'group'));
+  bot.action('ch_type_website', requireAdmin, (ctx) => handleChannelTypeSelect(ctx, 'website'));
+
+  // Langue du canal lors de la création
+  bot.action('ch_lang_fr', requireAdmin, (ctx) => handleChannelLangSelect(ctx, 'fr'));
+  bot.action('ch_lang_en', requireAdmin, (ctx) => handleChannelLangSelect(ctx, 'en'));
+  bot.action('ch_lang_de', requireAdmin, (ctx) => handleChannelLangSelect(ctx, 'de'));
+  bot.action('ch_lang_zh', requireAdmin, (ctx) => handleChannelLangSelect(ctx, 'zh'));
+  bot.action('ch_lang_all', requireAdmin, (ctx) => handleChannelLangSelect(ctx, 'all'));
+
   bot.action('ignore_detected_group', requireAdmin, async (ctx) => {
     await ctx.answerCbQuery('❌ Groupe ignoré').catch(() => {});
     await ctx.deleteMessage().catch(() => {});
