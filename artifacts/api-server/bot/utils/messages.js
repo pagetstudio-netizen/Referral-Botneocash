@@ -50,7 +50,7 @@ export async function welcomeMessage(firstName, lang = 'fr') {
   const dailyBonus    = await getSetting('daily_bonus')    || 0.5;
   const referralBonus = await getSetting('referral_bonus') || 1.5;
   const minWithdraw   = await getSetting('min_withdraw')   || 15;
-  return t(lang, 'welcome', firstName, referralBonus, dailyBonus, minWithdraw);
+  return t(lang, 'welcome', escapeMarkdown(firstName), referralBonus, dailyBonus, minWithdraw);
 }
 
 // ─── Message solde ─────────────────────────────────────────────────────────────

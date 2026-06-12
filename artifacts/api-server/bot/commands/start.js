@@ -83,13 +83,14 @@ export async function startCommand(ctx) {
 
   // ─── Notification admin nouveau utilisateur ───────────────────────────────────
   if (isNewUser && ctx.dbUser) {
+    const { escapeMarkdown } = await import('../utils/messages.js');
     await notifyAdmins(ctx.telegram, {
       type: 'new_user',
       text:
         `🆕 *NOUVEAU UTILISATEUR*\n\n` +
-        `👤 ${tg.first_name} ${tg.last_name || ''}\n` +
+        `👤 ${escapeMarkdown(tg.first_name)} ${escapeMarkdown(tg.last_name || '')}\n` +
         `🆔 \`${tg.id}\`\n` +
-        `📛 ${tg.username ? '@' + tg.username : 'N/A'}\n` +
+        `📛 ${tg.username ? '@' + escapeMarkdown(tg.username) : 'N/A'}\n` +
         `👥 Parrainé : ${args ? '✅ Oui' : '❌ Non'}`,
     });
   }
@@ -149,13 +150,14 @@ export async function handleLanguageSet(ctx, lang) {
   }
 
   // Notification admin
+  const { escapeMarkdown: esc } = await import('../utils/messages.js');
   await notifyAdmins(ctx.telegram, {
     type: 'new_user',
     text:
       `🆕 *NOUVEAU UTILISATEUR*\n\n` +
-      `👤 ${tg.first_name} ${tg.last_name || ''}\n` +
+      `👤 ${esc(tg.first_name)} ${esc(tg.last_name || '')}\n` +
       `🆔 \`${tg.id}\`\n` +
-      `📛 ${tg.username ? '@' + tg.username : 'N/A'}\n` +
+      `📛 ${tg.username ? '@' + esc(tg.username) : 'N/A'}\n` +
       `🌐 Langue : ${lang}\n` +
       `👥 Parrainé : ${args ? '✅ Oui' : '❌ Non'}`,
   }).catch(() => {});
