@@ -6,9 +6,9 @@
   "type": "module",
   "main": "bot/index.js",
   "scripts": {
-    "build": "node build.mjs",
-    "start": "node --enable-source-maps dist/index.mjs",
-    "dev": "node bot/index.js"
+    "start": "node bot/index.js",
+    "dev": "node bot/index.js",
+    "build": "node build.mjs"
   },
   "engines": {
     "node": ">=20.0.0"
