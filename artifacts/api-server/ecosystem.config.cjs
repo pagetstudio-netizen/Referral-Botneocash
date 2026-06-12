@@ -3,16 +3,12 @@
  *
  * Sur Plesk (si PM2 disponible) :
  *   pm2 start ecosystem.config.cjs --env production
- *
- * Toutes les variables sensibles doivent être définies
- * dans le fichier .env ou dans Plesk → Variables d'environnement.
- * Les valeurs ci-dessous sont des FALLBACKS de développement uniquement.
  */
 module.exports = {
   apps: [
     {
       name: 'neocash-bot',
-      script: './bot/index.js',
+      script: './start.cjs',
       cwd: __dirname,
 
       interpreter: 'node',
@@ -25,7 +21,7 @@ module.exports = {
 
       env_development: {
         NODE_ENV: 'development',
-        PORT: process.env.PORT || 5000,
+        PORT: process.env.PORT || 3000,
         LOG_LEVEL: 'debug',
       },
 
