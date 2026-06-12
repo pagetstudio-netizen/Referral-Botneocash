@@ -7,6 +7,7 @@ import express from 'express';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { request as httpRequest } from 'http';
 import logger from './utils/logger.js';
 import adminRouter from './routes/admin.js';
 
@@ -96,6 +97,19 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   logger.info(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
 });
+
+// ─── Keep-alive : auto-ping toutes les 4 minutes pour éviter la mise en veille ─
+function selfPing() {
+  const req = httpRequest(
+    { hostname: '127.0.0.1', port: PORT, path: '/api/health', method: 'GET', timeout: 8000 },
+    () => {}
+  );
+  req.on('error', () => {});
+  req.end();
+}
+
+setInterval(selfPing, 4 * 60 * 1000);
+logger.info('💓 Keep-alive activé (ping /api/health toutes les 4 min)');
 
 // ─── Démarrage asynchrone bot + Supabase ───────────────────────────────────────
 async function startBot() {
