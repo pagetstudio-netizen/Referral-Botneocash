@@ -63,6 +63,11 @@ SUPABASE_URL = "https://yvbepkepcpxhjdrloszp.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2YmVwa2VwY3B4aGpkcmxvc3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MDYyMzEsImV4cCI6MjA5Mzk4MjIzMX0.UQ3TnaET5UPI8LCJ4jVxc6II_WpR3UCQW70o_NZj298"
 BOT_TOKEN = "8383517885:AAHKdtt3opaNxLX4Um3ZgHhaw7SLp2bODNw"
 ADMIN_GROUP_ID = "-1003973479988"
+PORT = "5000"
+NODE_ENV = "production"
+LOG_LEVEL = "info"
+BASE_PATH = "/"
+ADMIN_EMAIL = "admin@example.com"
 
 [nix]
 channel = "stable-25_05"
