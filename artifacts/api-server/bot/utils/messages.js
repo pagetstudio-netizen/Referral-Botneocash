@@ -1,5 +1,5 @@
 /**
- * Templates de messages pour NeoCash — avec support multilingue
+ * Templates de messages pour Moon Crypto — avec support multilingue
  * Système basé sur USDT / cryptomonnaies
  */
 import { getSetting } from '../models/Settings.js';

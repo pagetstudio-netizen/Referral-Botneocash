@@ -17,7 +17,7 @@ export async function handleSupport(ctx) {
     getSetting('bot_name'),
   ]);
 
-  const name = botName || 'NeoCash';
+  const name = botName || 'Moon Crypto';
   const SEP = '━━━━━━━━━━━━━━━━━━';
 
   const defaultBody = customMessage || t(lang, 'support_default_body');

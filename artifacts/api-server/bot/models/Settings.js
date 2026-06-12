@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = {
   admin_group_id:     { value: '',       description: 'ID du groupe admin pour notifications' },
   withdrawal_channel: { value: '',       description: 'Canal de retrait (notifications publiques)' },
   maintenance_mode:   { value: 'false',  description: 'Mode maintenance activé/désactivé' },
-  bot_name:           { value: 'NeoCash',description: 'Nom du bot' },
+  bot_name:           { value: 'Moon Crypto',description: 'Nom du bot' },
 };
 
 export async function initSettings() {

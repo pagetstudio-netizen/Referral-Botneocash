@@ -11,8 +11,8 @@ export default function Login() {
   const loginMutation = useAdminLogin({
     mutation: {
       onSuccess(data) {
-        localStorage.setItem("neocash_token", data.token);
-        localStorage.setItem("neocash_admin", JSON.stringify(data.admin));
+        localStorage.setItem("moon_crypto_token", data.token);
+        localStorage.setItem("moon_crypto_admin", JSON.stringify(data.admin));
         navigate("/");
       },
       onError(err: any) {
@@ -31,8 +31,9 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-md p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">NeoCash Admin</h1>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <img src="/logo.png" alt="Moon Crypto" className="w-24 h-24 object-contain mb-4 rounded-full" />
+          <h1 className="text-2xl font-bold text-gray-900">Moon Crypto Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Connectez-vous pour acceder au tableau de bord</p>
         </div>
 

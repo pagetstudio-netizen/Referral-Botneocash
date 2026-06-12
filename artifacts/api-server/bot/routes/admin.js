@@ -1,5 +1,5 @@
 /**
- * Routes Admin — Tableau de bord web NeoCash
+ * Routes Admin — Tableau de bord web Moon Crypto
  */
 import { Router } from 'express';
 import crypto from 'crypto';
@@ -47,7 +47,7 @@ const router = Router();
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'pagetstudio@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'AAbb11##';
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Administrateur';
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'neocash-admin-secret-2024';
+const JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'moon-crypto-admin-secret-2024';
 
 function signToken(payload) {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -359,7 +359,7 @@ router.post('/admin/withdrawals/:id/approve', authMiddleware, async (req, res) =
     // ─── Notifications Telegram (en arrière-plan) ───────────────────────────
     setImmediate(async () => {
       try {
-        const bot = global.neocashBot;
+        const bot = global.moonCryptoBot;
         if (!bot) return;
 
         // Notification à l'utilisateur
@@ -387,7 +387,7 @@ router.post('/admin/withdrawals/:id/approve', authMiddleware, async (req, res) =
           bot.telegram,
           { source: createReadStream(LOGO_PATH) },
           caption,
-          { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+          { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre Moon Crypto', url: botLink }]] } }
         );
       } catch (err) {
         logger.warn('Approve notif error', { err: err.message });
@@ -424,7 +424,7 @@ router.post('/admin/withdrawals/:id/reject', authMiddleware, async (req, res) =>
     // ─── Notification Telegram (en arrière-plan) ────────────────────────────
     setImmediate(async () => {
       try {
-        const bot = global.neocashBot;
+        const bot = global.moonCryptoBot;
         if (!bot) return;
         await notifyUser(
           bot.telegram,
@@ -466,7 +466,7 @@ router.get('/admin/settings', authMiddleware, async (req, res) => {
       supportLink: supportLink || '',
       supportMessage: supportMessage || '',
       maintenanceMode: !!maintenanceMode,
-      botName: botName || 'NeoCash',
+      botName: botName || 'Moon Crypto',
       withdrawalChannel: withdrawalChannel || '',
       adminGroupId: adminGroupId || '',
     });
@@ -579,7 +579,7 @@ router.post('/admin/broadcast', authMiddleware, async (req, res) => {
       try {
         const { queryAll } = await import('../database/db.js');
         const users = await queryAll('SELECT telegram_id FROM users WHERE banned = false', []);
-        const bot = global.neocashBot;
+        const bot = global.moonCryptoBot;
         if (!bot) { logger.warn('Broadcast: bot non disponible'); return; }
 
         const replyOpts = buttonLabel && buttonUrl

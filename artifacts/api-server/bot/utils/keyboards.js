@@ -1,5 +1,5 @@
 /**
- * Claviers inline et persistants pour NeoCash — multilingue
+ * Claviers inline et persistants pour Moon Crypto — multilingue
  */
 import { Markup } from 'telegraf';
 import { getCountryList } from './countries.js';

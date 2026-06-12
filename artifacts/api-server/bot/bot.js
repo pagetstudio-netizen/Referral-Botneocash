@@ -1,5 +1,5 @@
 /**
- * Configuration principale du bot NeoCash — Telegraf
+ * Configuration principale du bot Moon Crypto — Telegraf
  * Système multilingue : FR / EN / DE / ZH
  */
 import { Telegraf } from 'telegraf';
@@ -256,7 +256,7 @@ export function createBot() {
   bot.action('admin_back', requireAdmin, async (ctx) => {
     await ctx.answerCbQuery().catch(() => {});
     const { adminKeyboard } = await import('./utils/keyboards.js');
-    await ctx.editMessageText('🛡 *PANEL ADMINISTRATEUR — NEOCASH*\n\nSélectionne une option :', {
+    await ctx.editMessageText('🛡 *PANEL ADMINISTRATEUR — MOON CRYPTO*\n\nSélectionne une option :', {
       parse_mode: 'Markdown',
       ...adminKeyboard,
     }).catch(() => ctx.reply('🛡 Panel Admin', adminKeyboard));

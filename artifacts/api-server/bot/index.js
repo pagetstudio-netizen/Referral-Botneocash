@@ -1,5 +1,5 @@
 /**
- * NeoCash Bot — Point d'entrée principal
+ * Moon Crypto Bot — Point d'entrée principal
  * Démarre le bot Telegram + serveur Express (healthcheck + admin dashboard statique)
  */
 import 'dotenv/config';
@@ -41,7 +41,7 @@ if (existsSync(ADMIN_DIST)) {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    bot: 'NeoCash',
+    bot: 'Moon Crypto',
     dbConnected: global.dbConnected || false,
     botRunning: global.botRunning || false,
     timestamp: new Date().toISOString(),
@@ -75,7 +75,7 @@ app.get('/', (req, res) => {
   if (missing.length > 0) {
     return res.send(`
       <html><body style="font-family:monospace;padding:20px;background:#1a1a2e;color:#e0e0e0">
-        <h1>🤖 NeoCash Bot</h1>
+        <h1>🤖 Moon Crypto Bot</h1>
         <p style="color:#ff6b6b">⚠️ Variables manquantes : <strong>${missing.join(', ')}</strong></p>
         <p>Configure ces secrets dans l'onglet <strong>Secrets</strong> de Replit.</p>
         <hr/>
@@ -90,7 +90,7 @@ app.get('/', (req, res) => {
     `);
   }
 
-  res.json({ status: 'ok', message: 'NeoCash Bot opérationnel' });
+  res.json({ status: 'ok', message: 'Moon Crypto Bot opérationnel' });
 });
 
 app.listen(PORT, () => {
@@ -124,7 +124,7 @@ async function startBot() {
     // Lancement du bot (sans await — bot.launch() est une boucle infinie en long-polling)
     const { createBot } = await import('./bot.js');
     const bot = createBot();
-    global.neocashBot = bot;
+    global.moonCryptoBot = bot;
     bot.launch().catch((err) => {
       logger.error(`❌ Bot polling erreur : ${err.message}`);
     });
@@ -153,5 +153,5 @@ async function startBot() {
   }
 }
 
-logger.info('🚀 Démarrage de NeoCash Bot...');
+logger.info('🚀 Démarrage de Moon Crypto Bot...');
 startBot();

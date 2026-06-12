@@ -17,7 +17,7 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-setAuthTokenGetter(() => localStorage.getItem("neocash_token"));
+setAuthTokenGetter(() => localStorage.getItem("moon_crypto_token"));
 
 function App() {
   return (

@@ -56,7 +56,7 @@ export default function Broadcast() {
         imageMimeType = imageFile.type;
       }
 
-      const token = localStorage.getItem("neocash_token");
+      const token = localStorage.getItem("moon_crypto_token");
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         headers: {

@@ -1,5 +1,5 @@
 /**
- * Commande /start — Point d'entrée du bot NeoCash
+ * Commande /start — Point d'entrée du bot Moon Crypto
  * Inclut le flux de sélection de langue
  */
 import { createReadStream } from 'fs';

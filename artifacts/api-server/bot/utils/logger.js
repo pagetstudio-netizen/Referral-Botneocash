@@ -1,5 +1,5 @@
 /**
- * Logger utilitaire pour le bot NeoCash
+ * Logger utilitaire pour le bot Moon Crypto
  */
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };

@@ -76,7 +76,7 @@ export default function Dashboard() {
     <div className="p-4 sm:p-6 md:p-8">
       <div className="mb-5 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-bold text-gray-900">Tableau de bord</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Vue d'ensemble de NeoCash Bot</p>
+        <p className="text-sm text-gray-500 mt-0.5">Vue d'ensemble de Moon Crypto Bot</p>
       </div>
 
       <div className="space-y-5 sm:space-y-6">

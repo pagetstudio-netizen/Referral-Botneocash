@@ -13,7 +13,7 @@ function fetchFromCoinGecko(coingeckoId) {
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coingeckoId)}&vs_currencies=usd`;
     const req = https.get(url, {
       headers: {
-        'User-Agent': 'NeoCashBot/1.0',
+        'User-Agent': 'Moon CryptoBot/1.0',
         'Accept': 'application/json',
       },
     }, (res) => {

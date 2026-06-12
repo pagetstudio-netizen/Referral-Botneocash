@@ -25,6 +25,7 @@ import logger from '../utils/logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGO_PATH = join(__dirname, '../assets/logo.png');
+const BANNER_PATH = join(__dirname, '../assets/banner.png');
 
 function maskWallet(addr) {
   if (!addr || addr.length < 8) return addr || '—';
@@ -259,8 +260,8 @@ export async function handleConfirmWithdrawal(ctx) {
           `📅 Date : ${now}\n\n` +
           `💬 _Toi aussi tu peux gagner !_`;
         await notifyWithdrawalChannelPhoto(
-          ctx.telegram, { source: createReadStream(LOGO_PATH) }, caption,
-          { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+          ctx.telegram, { source: createReadStream(BANNER_PATH) }, caption,
+          { reply_markup: { inline_keyboard: [[{ text: '🚀 Rejoindre Moon Crypto', url: botLink }]] } }
         );
       } catch (err) { logger.error('Erreur notif canal retrait', { err: err.message }); }
     });
@@ -427,8 +428,8 @@ export async function adminApproveWithdrawal(ctx, withdrawalId) {
           ? `🔄 Reçu : *${formatCryptoAmount(wd.cryptoAmount, wd.crypto)}*\n`
           : '') +
         `📅 Date : ${now}\n\n💬 _Toi aussi tu peux gagner !_`;
-      await notifyWithdrawalChannelPhoto(ctx.telegram, { source: createReadStream(LOGO_PATH) }, caption,
-        { reply_markup: { inline_keyboard: [[{ text: '🤖 Rejoindre NeoCash', url: botLink }]] } }
+      await notifyWithdrawalChannelPhoto(ctx.telegram, { source: createReadStream(BANNER_PATH) }, caption,
+        { reply_markup: { inline_keyboard: [[{ text: '🚀 Rejoindre Moon Crypto', url: botLink }]] } }
       );
     } catch (err) { logger.warn('Canal retrait notif failed', { err: err.message }); }
   } catch (err) {

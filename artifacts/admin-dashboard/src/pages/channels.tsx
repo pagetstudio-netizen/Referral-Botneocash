@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, Plus, Edit2, Check, X, Users, Radio, Globe, Hash } from "lucide-react";
 
 async function apiFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("neocash_token");
+  const token = localStorage.getItem("moon_crypto_token");
   const res = await fetch(path, {
     ...options,
     headers: {
@@ -129,7 +129,7 @@ export default function Channels() {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom du bouton <span className="text-red-500">*</span></label>
               <input
-                className={inputCls} value={form.label} placeholder="Ex: 📢 Rejoindre NeoCash"
+                className={inputCls} value={form.label} placeholder="Ex: 📢 Rejoindre Moon Crypto"
                 onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
               />
               <p className="text-xs text-gray-400 mt-1">Texte visible par l'utilisateur sur le bouton</p>

@@ -1,6 +1,6 @@
-# NeoCash Bot
+# Moon Crypto Bot
 
-Bot Telegram professionnel de gains et de parrainage pour l'Afrique de l'Ouest. Les utilisateurs gagnent de l'argent via le parrainage (120 FCFA/ami) et les bonus quotidiens (100 FCFA/jour).
+Bot Telegram professionnel de gains et de parrainage crypto. Les utilisateurs gagnent de l'USDT via le parrainage et les bonus quotidiens, et retirent en USDT/BTC/ETH/BNB/TRX vers leur wallet.
 
 ## Run & Operate
 
@@ -17,14 +17,16 @@ Bot Telegram professionnel de gains et de parrainage pour l'Afrique de l'Ouest. 
 - `artifacts/api-server/bot/` — Tout le code du bot Telegram
   - `commands/` — /start, /admin
   - `handlers/` — balance, bonus, referral, withdrawal, support, explanation
-  - `models/` — User, Withdrawal, Referral, Transaction, Settings, Admin, Notification
+  - `models/` — User, Withdrawal, Referral, Transaction, Settings, Admin, Notification, Crypto
   - `middleware/` — auth (canal verify), admin, antispam
-  - `utils/` — keyboards, messages, countries, notify, logger
+  - `utils/` — keyboards, messages, countries, notify, logger, cryptoPrice
   - `database/connect.js` — Connexion Supabase PostgreSQL
   - `database/db.js` — Pool pg (queryOne, queryAll, queryScalar)
   - `database/schema.sql` — Schéma PostgreSQL (CREATE IF NOT EXISTS, auto-exécuté)
   - `bot.js` — Configuration Telegraf centrale
   - `index.js` — Point d'entrée
+  - `assets/logo.png` — Logo circulaire Moon Crypto (utilisé pour les messages bot)
+  - `assets/banner.png` — Bannière Moon Crypto (utilisé pour les notifications canal)
 
 ## Architecture decisions
 
@@ -35,21 +37,24 @@ Bot Telegram professionnel de gains et de parrainage pour l'Afrique de l'Ouest. 
 - Canal obligatoire vérifié via `getChatMember` à chaque action
 - Anti-spam via compteur de requêtes par fenêtre glissante
 - Schéma SQL initialisé automatiquement au démarrage (idempotent)
+- Variable globale bot : `global.moonCryptoBot`
+- JWT secret par défaut : `moon-crypto-admin-secret-2024`
+- localStorage admin dashboard : `moon_crypto_token` / `moon_crypto_admin`
 
 ## Product
 
-- 👥 Parrainage : 120 FCFA par ami invité (via lien unique)
-- 🎁 Bonus quotidien : 100 FCFA toutes les 24h
-- 💸 Retraits Mobile Money : min 800 FCFA, 10 pays africains supportés
+- 👥 Parrainage : gains USDT par ami invité (via lien unique)
+- 🎁 Bonus quotidien : USDT toutes les 24h
+- 💸 Retraits crypto : USDT/BTC/ETH/BNB/TRX vers wallet, multi-réseau
 - 🛡 Panel admin Telegram : stats, gestion users, diffusion globale, paramètres dynamiques
 - 🔒 Vérification canal obligatoire configurable
+- 📢 Notifications canal : photo bannière + bouton CTA au retrait approuvé
 
 ## User preferences
 
 - Code en JavaScript (ESM), pas TypeScript pour le bot
 - Architecture propre avec dossiers séparés (commands, handlers, models, middleware, utils)
 - Interface en français avec emojis professionnels
-- Devise FCFA
 
 ## Gotchas
 
@@ -58,6 +63,7 @@ Bot Telegram professionnel de gains et de parrainage pour l'Afrique de l'Ouest. 
 - Pour les notifications de groupe admin : ajouter le bot dans le groupe, utiliser ADMIN_GROUP_ID
 - Le canal obligatoire doit avoir le bot en tant qu'admin pour vérifier les membres
 - DATABASE_URL est réservé par Replit — utiliser SUPABASE_DB_URL pour la connexion pg
+- Le prix crypto est calculé via l'API CoinGecko (cryptoPrice.js)
 
 ## Secrets requis
 

@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("neocash_token");
+    const token = localStorage.getItem("moon_crypto_token");
     if (!token) navigate("/login");
   }, [navigate]);
 
@@ -32,13 +32,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   function handleLogout() {
-    localStorage.removeItem("neocash_token");
-    localStorage.removeItem("neocash_admin");
+    localStorage.removeItem("moon_crypto_token");
+    localStorage.removeItem("moon_crypto_admin");
     window.location.href = "/login";
   }
 
   const admin = (() => {
-    try { return JSON.parse(localStorage.getItem("neocash_admin") || "{}"); }
+    try { return JSON.parse(localStorage.getItem("moon_crypto_admin") || "{}"); }
     catch { return {}; }
   })();
 
@@ -46,9 +46,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <>
       {/* Logo */}
       <div className="p-5 border-b border-gray-200 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">NeoCash Admin</h1>
-          <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[160px]">{admin.email || "Administrateur"}</p>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Moon Crypto" className="w-10 h-10 object-contain rounded-full flex-shrink-0" />
+          <div>
+            <h1 className="text-base font-bold text-gray-900">Moon Crypto</h1>
+            <p className="text-xs text-gray-500 truncate max-w-[120px]">{admin.email || "Administrateur"}</p>
+          </div>
         </div>
         {/* Fermer drawer sur mobile */}
         <button
@@ -129,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         >
           <Menu size={20} />
         </button>
-        <span className="font-bold text-gray-900 text-base">NeoCash Admin</span>
+        <span className="font-bold text-gray-900 text-base">Moon Crypto Admin</span>
         <div className="w-9" />
       </header>
 

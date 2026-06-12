@@ -32,7 +32,7 @@ const adminSessions = new Map();
 // ─── /admin ───────────────────────────────────────────────────────────────────
 export async function adminCommand(ctx) {
   await ctx.reply(
-    `🛡 *PANEL ADMINISTRATEUR — NEOCASH*\n\n━━━━━━━━━━━━━━━━━━\nBienvenue, Admin !\nSélectionne une option :`,
+    `🛡 *PANEL ADMINISTRATEUR — MOON CRYPTO*\n\n━━━━━━━━━━━━━━━━━━\nBienvenue, Admin !\nSélectionne une option :`,
     { parse_mode: 'Markdown', ...adminKeyboard }
   );
 }
@@ -72,7 +72,7 @@ export async function handleAdminStats(ctx) {
     Transaction.sumBonuses(),
   ]);
 
-  const text = `📊 *STATISTIQUES NEOCASH*
+  const text = `📊 *STATISTIQUES MOON CRYPTO*
 
 ━━━━━━━━━━━━━━━━━━
 👥 *UTILISATEURS*
@@ -164,7 +164,7 @@ export async function handleAddReqChannel(ctx) {
   await ctx.reply(
     `➕ *AJOUTER UN CANAL OBLIGATOIRE*\n\n` +
     `Étape 1/4 — Entrez le *nom affiché* de ce canal :\n\n` +
-    `_Exemple : "Retrait NeoCash FR", "NeoCash EN Group"_`,
+    `_Exemple : "Retrait Moon Crypto FR", "Moon Crypto EN Group"_`,
     { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('❌ Annuler', 'admin_channels')]]) }
   );
 }
@@ -604,7 +604,7 @@ export async function handleAdminSettings(ctx) {
   ]);
 
   const text =
-    `⚙️ *PARAMÈTRES NEOCASH*\n\n` +
+    `⚙️ *PARAMÈTRES MOON CRYPTO*\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `🎁 Bonus quotidien : *${formatAmount(dailyBonus)}*\n` +
     `👥 Bonus parrainage : *${formatAmount(referralBonus)}*\n` +

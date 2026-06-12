@@ -79,7 +79,7 @@ export default function Settings() {
     <div className="p-4 sm:p-6 md:p-8 max-w-2xl">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-900">Parametres du bot</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Configurez les regles et parametres de NeoCash</p>
+        <p className="text-sm text-gray-500 mt-0.5">Configurez les regles et parametres de Moon Crypto</p>
       </div>
 
       {message && (
@@ -145,7 +145,7 @@ export default function Settings() {
                 value={form.botName ?? ""}
                 onChange={(e) => setForm(f => ({ ...f, botName: e.target.value }))}
                 className={inputClass}
-                placeholder="NeoCash"
+                placeholder="Moon Crypto"
               />
             </div>
             <div>

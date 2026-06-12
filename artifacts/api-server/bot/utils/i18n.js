@@ -44,7 +44,7 @@ const translations = {
   // ── Message de bienvenue ─────────────────────────────────────────────────────
   welcome: {
     fr: (name, ref, daily, min) =>
-      `👋 *Bonjour ${name}, bienvenue chez NeoCash !* 🎉\n\n` +
+      `👋 *Bonjour ${name}, bienvenue chez Moon Crypto !* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Gagne de l'argent réel* en partageant simplement ton lien de parrainage avec tes amis et ta famille !\n\n` +
       `🔥 *Comment gagner :*\n` +
@@ -56,7 +56,7 @@ const translations = {
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *C'est gratuit, sans dépôt — commence maintenant !*`,
     en: (name, ref, daily, min) =>
-      `👋 *Hello ${name}, welcome to NeoCash!* 🎉\n\n` +
+      `👋 *Hello ${name}, welcome to Moon Crypto!* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Earn real money* by simply sharing your referral link with friends and family!\n\n` +
       `🔥 *How to earn:*\n` +
@@ -68,7 +68,7 @@ const translations = {
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *It's free, no deposit required — start now!*`,
     de: (name, ref, daily, min) =>
-      `👋 *Hallo ${name}, willkommen bei NeoCash!* 🎉\n\n` +
+      `👋 *Hallo ${name}, willkommen bei Moon Crypto!* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Verdiene echtes Geld*, indem du deinen Empfehlungslink mit Freunden und Familie teilst!\n\n` +
       `🔥 *Wie du verdienst:*\n` +
@@ -80,7 +80,7 @@ const translations = {
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *Kostenlos, keine Einzahlung — fang jetzt an!*`,
     zh: (name, ref, daily, min) =>
-      `👋 *你好 ${name}，欢迎来到 NeoCash！* 🎉\n\n` +
+      `👋 *你好 ${name}，欢迎来到 Moon Crypto！* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *赚取真实收入*，只需将您的推荐链接分享给朋友和家人！\n\n` +
       `🔥 *如何赚取：*\n` +
@@ -169,10 +169,10 @@ const translations = {
     zh: '📤 分享我的链接',
   },
   referral_share_text: {
-    fr: '🎉 Rejoins NeoCash et gagne de l\'argent !',
-    en: '🎉 Join NeoCash and earn money!',
-    de: '🎉 Tritt NeoCash bei und verdiene Geld!',
-    zh: '🎉 加入 NeoCash，赚取真实收入！',
+    fr: '🎉 Rejoins Moon Crypto et gagne de l\'argent !',
+    en: '🎉 Join Moon Crypto and earn money!',
+    de: '🎉 Tritt Moon Crypto bei und verdiene Geld!',
+    zh: '🎉 加入 Moon Crypto，赚取真实收入！',
   },
 
   // ── Bonus quotidien ──────────────────────────────────────────────────────────
@@ -657,10 +657,10 @@ const translations = {
     zh: '*简单步骤：*',
   },
   explanation_step1: {
-    fr: '1️⃣ *Rejoins* la communauté NeoCash',
-    en: '1️⃣ *Join* the NeoCash community',
-    de: '1️⃣ *Tritt* der NeoCash-Gemeinschaft bei',
-    zh: '1️⃣ *加入* NeoCash 社区',
+    fr: '1️⃣ *Rejoins* la communauté Moon Crypto',
+    en: '1️⃣ *Join* the Moon Crypto community',
+    de: '1️⃣ *Tritt* der Moon Crypto-Gemeinschaft bei',
+    zh: '1️⃣ *加入* Moon Crypto 社区',
   },
   explanation_step2: {
     fr: '2️⃣ *Invite* tes amis avec ton lien unique',
@@ -797,10 +797,10 @@ const translations = {
     zh: '🌐 访问网站',
   },
   channel_access_granted: {
-    fr: '🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.',
-    en: '🎉 *Access granted!*\n\nWelcome to NeoCash. Use the menu below.',
-    de: '🎉 *Zugang gewährt!*\n\nWillkommen bei NeoCash. Nutze das Menü unten.',
-    zh: '🎉 *访问权限已授予！*\n\n欢迎来到 NeoCash。请使用下方菜单。',
+    fr: '🎉 *Accès accordé !*\n\nBienvenue sur Moon Crypto. Utilise le menu ci-dessous.',
+    en: '🎉 *Access granted!*\n\nWelcome to Moon Crypto. Use the menu below.',
+    de: '🎉 *Zugang gewährt!*\n\nWillkommen bei Moon Crypto. Nutze das Menü unten.',
+    zh: '🎉 *访问权限已授予！*\n\n欢迎来到 Moon Crypto。请使用下方菜单。',
   },
   channel_still_missing: {
     fr: (names) => `❌ Rejoins d'abord : ${names}`,
@@ -894,7 +894,7 @@ const translations = {
     fr: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *Félicitations ${refFirstName} !*\n\n` +
       `💸 Tu viens de gagner *${bonus} USDT* !\n\n` +
-      `👤 *${filFirstName}* vient de rejoindre NeoCash grâce à ton lien.\n\n` +
+      `👤 *${filFirstName}* vient de rejoindre Moon Crypto grâce à ton lien.\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💰 Bonus crédité : *+${bonus} USDT*\n` +
       `👥 Total filleuls validés : *${count}*\n` +
@@ -904,7 +904,7 @@ const translations = {
     en: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *Congratulations ${refFirstName}!*\n\n` +
       `💸 You just earned *${bonus} USDT*!\n\n` +
-      `👤 *${filFirstName}* just joined NeoCash through your link.\n\n` +
+      `👤 *${filFirstName}* just joined Moon Crypto through your link.\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💰 Bonus credited: *+${bonus} USDT*\n` +
       `👥 Total validated referrals: *${count}*\n` +
@@ -914,7 +914,7 @@ const translations = {
     de: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *Glückwunsch ${refFirstName}!*\n\n` +
       `💸 Du hast gerade *${bonus} USDT* verdient!\n\n` +
-      `👤 *${filFirstName}* ist gerade über deinen Link bei NeoCash beigetreten.\n\n` +
+      `👤 *${filFirstName}* ist gerade über deinen Link bei Moon Crypto beigetreten.\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💰 Bonus gutgeschrieben: *+${bonus} USDT*\n` +
       `👥 Bestätigte Empfehlungen: *${count}*\n` +
@@ -924,7 +924,7 @@ const translations = {
     zh: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *恭喜 ${refFirstName}！*\n\n` +
       `💸 您刚刚赚取了 *${bonus} USDT*！\n\n` +
-      `👤 *${filFirstName}* 刚刚通过您的链接加入了 NeoCash。\n\n` +
+      `👤 *${filFirstName}* 刚刚通过您的链接加入了 Moon Crypto。\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💰 已奖励：*+${bonus} USDT*\n` +
       `👥 已确认推荐总计：*${count}*\n` +
