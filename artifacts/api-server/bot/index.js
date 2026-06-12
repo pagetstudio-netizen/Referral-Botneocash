@@ -69,7 +69,7 @@ app.get('/api/stats', async (req, res) => {
 app.get('/', (req, res) => {
   const missing = [];
   if (!process.env.BOT_TOKEN) missing.push('BOT_TOKEN');
-  if (!process.env.SUPABASE_DB_URL) missing.push('SUPABASE_DB_URL');
+  if (!process.env.DATABASE_URL && !process.env.SUPABASE_DB_URL) missing.push('DATABASE_URL');
   if (!process.env.ADMIN_IDS) missing.push('ADMIN_IDS');
 
   if (missing.length > 0) {
@@ -82,7 +82,7 @@ app.get('/', (req, res) => {
         <h3>Variables requises :</h3>
         <ul>
           <li><code>BOT_TOKEN</code> — Token du bot (@BotFather)</li>
-          <li><code>SUPABASE_DB_URL</code> — URL de connexion PostgreSQL Supabase</li>
+          <li><code>DATABASE_URL</code> — URL de connexion PostgreSQL (fournie automatiquement par Replit)</li>
           <li><code>ADMIN_IDS</code> — Ton ID Telegram (@userinfobot)</li>
         </ul>
         <p style="color:#4ecdc4">✅ <a href="/api/health" style="color:#4ecdc4">GET /api/health</a></p>
@@ -101,7 +101,7 @@ app.listen(PORT, () => {
 async function startBot() {
   const missingVars = [];
   if (!process.env.BOT_TOKEN) missingVars.push('BOT_TOKEN');
-  if (!process.env.SUPABASE_DB_URL) missingVars.push('SUPABASE_DB_URL');
+  if (!process.env.DATABASE_URL && !process.env.SUPABASE_DB_URL) missingVars.push('DATABASE_URL');
 
   if (missingVars.length > 0) {
     logger.warn(`⚠️  Variables d'environnement manquantes : ${missingVars.join(', ')}`);

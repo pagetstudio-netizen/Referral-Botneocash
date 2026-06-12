@@ -1,5 +1,5 @@
 /**
- * Pool PostgreSQL — Supabase
+ * Pool PostgreSQL — Replit Database
  */
 import pg from 'pg';
 const { Pool } = pg;
@@ -8,11 +8,13 @@ let pool;
 
 export function getPool() {
   if (!pool) {
-    const connStr = process.env.SUPABASE_DB_URL;
-    if (!connStr) throw new Error('SUPABASE_DB_URL non définie');
+    const connStr = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
+    if (!connStr) throw new Error('DATABASE_URL non définie');
     pool = new Pool({
       connectionString: connStr,
-      ssl: { rejectUnauthorized: false },
+      ssl: connStr.includes('localhost') || connStr.includes('127.0.0.1')
+        ? false
+        : { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
     });
