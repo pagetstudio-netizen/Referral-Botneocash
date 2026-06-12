@@ -16,9 +16,9 @@ async function buildAll() {
     entryPoints: [path.resolve(artifactDir, "bot/index.js")],
     platform: "node",
     bundle: true,
-    format: "esm",
+    format: "cjs",
     outdir: distDir,
-    outExtension: { ".js": ".mjs" },
+    outExtension: { ".js": ".cjs" },
     logLevel: "info",
     external: [
       "*.node",
@@ -95,15 +95,11 @@ async function buildAll() {
       "electron",
     ],
     sourcemap: "linked",
+    define: {
+      "import.meta.url": "__importMetaUrl",
+    },
     banner: {
-      js: `import { createRequire as __bannerCrReq } from 'node:module';
-import __bannerPath from 'node:path';
-import __bannerUrl from 'node:url';
-
-globalThis.require = __bannerCrReq(import.meta.url);
-globalThis.__filename = __bannerUrl.fileURLToPath(import.meta.url);
-globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
-    `,
+      js: `'use strict';\nconst __importMetaUrl = require('url').pathToFileURL(__filename).href;`,
     },
   });
 
@@ -115,8 +111,8 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     path.resolve(distDir, "schema.sql")
   );
 
-  // logo.png: start.js & withdrawal.js read join(__dirname, '../assets/logo.png')
-  // bundled __dirname = dist/, so logo must be at dist/../assets/ = api-server root assets/
+  // logo.png & banner.png: handlers read join(__dirname, '../assets/logo.png')
+  // bundled __dirname = dist/, so assets must be at dist/../assets/ = artifacts/api-server/assets/
   const assetsDir = path.resolve(distDir, "../assets");
   await mkdir(assetsDir, { recursive: true });
   await copyFile(
@@ -128,7 +124,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     path.resolve(assetsDir, "banner.png")
   );
 
-  console.log("✅ Static assets copied (schema.sql, logo.png, banner.png)");
+  console.log("✅ Build CJS terminé — dist/index.js prêt pour Passenger/Plesk");
 }
 
 buildAll().catch((err) => {
