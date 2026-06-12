@@ -5,7 +5,7 @@
 # Sur Plesk → Git → "Script de déploiement" → ./deploy.sh
 #
 # Ce script s'exécute automatiquement après chaque "Deploy Now".
-# Le dashboard admin est pré-construit dans git → aucun build requis.
+# Les fichiers dist/ sont pré-construits dans git (pas besoin de pnpm).
 # Seul npm est nécessaire — aucun pnpm requis sur le serveur.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 set -e
@@ -19,17 +19,36 @@ echo "  NeoCash — Déploiement Plesk"
 echo "  Répertoire : $ROOT_DIR"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# ─── 1. Dépendances du bot ─────────────────────────────────────────────────────
+# ─── 1. Dépendances du bot (production uniquement) ─────────────────────────────
 echo ""
 echo "📦 Installation des dépendances..."
 cd "$API_DIR"
 npm install --omit=dev --no-audit --no-fund --ignore-scripts
 echo "✔ Dépendances installées"
 
-# ─── 2. Dossier logs ───────────────────────────────────────────────────────────
+# ─── 2. Vérification des fichiers dist ─────────────────────────────────────────
+echo ""
+echo "🔍 Vérification des fichiers de build..."
+
+if [ ! -f "$API_DIR/dist/index.mjs" ]; then
+  echo "❌ ERREUR : dist/index.mjs introuvable !"
+  echo "   → Lance le build depuis Replit et re-push sur GitHub."
+  exit 1
+fi
+
+echo "✔ dist/index.mjs présent ($(du -sh "$API_DIR/dist/index.mjs" | cut -f1))"
+
+ADMIN_DIST="$ROOT_DIR/artifacts/admin-dashboard/dist/public/index.html"
+if [ -f "$ADMIN_DIST" ]; then
+  echo "✔ Dashboard admin présent"
+else
+  echo "⚠️  Dashboard admin absent (optionnel)"
+fi
+
+# ─── 3. Dossier logs ───────────────────────────────────────────────────────────
 mkdir -p "$API_DIR/logs"
 
-# ─── 3. Démarrage / redémarrage ────────────────────────────────────────────────
+# ─── 4. Démarrage / redémarrage ────────────────────────────────────────────────
 echo ""
 echo "🔄 Gestion du processus..."
 
@@ -45,8 +64,7 @@ if command -v pm2 &>/dev/null; then
     echo "✔ PM2 : application démarrée"
   fi
 else
-  echo "   → PM2 non trouvé : Plesk gérera le redémarrage."
-  echo "   → Clique sur 'Restart' dans le panneau Node.js Plesk."
+  echo "   → PM2 non trouvé : Plesk gérera le redémarrage via le bouton 'Restart'."
 fi
 
 echo ""

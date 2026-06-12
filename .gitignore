@@ -8,10 +8,12 @@ out-tsc
 .expo
 .expo-shared
 
-# Exception : le dashboard admin est pré-construit et commité pour Plesk
-# (Plesk n'a pas besoin de pnpm — il sert directement ces fichiers statiques)
+# Exception : les fichiers de build sont pré-construits et committés pour Plesk
+# (Plesk n'a pas besoin de pnpm/node — il utilise directement ces fichiers)
 !artifacts/admin-dashboard/dist/
 !artifacts/admin-dashboard/dist/**
+!artifacts/api-server/dist/
+!artifacts/api-server/dist/**
 
 # dependencies
 node_modules
