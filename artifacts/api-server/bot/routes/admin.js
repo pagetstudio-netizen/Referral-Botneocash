@@ -268,7 +268,7 @@ router.post('/admin/users/:telegramId/credit', authMiddleware, async (req, res) 
       description: type === 'debit' ? 'Débit admin web' : 'Crédit admin web',
     });
     logger.info('Admin credit/debit user', { telegramId: user.telegramId, type, amount: amt });
-    res.json({ success: true, message: `${type === 'debit' ? 'Débit' : 'Crédit'} de ${amt} FCFA effectué` });
+    res.json({ success: true, message: `${type === 'debit' ? 'Débit' : 'Crédit'} de ${amt} USDT effectué` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

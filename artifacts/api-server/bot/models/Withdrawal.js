@@ -1,5 +1,6 @@
 /**
  * Modèle Withdrawal — PostgreSQL (Supabase)
+ * Supporte l'ancien système (pays/opérateur/téléphone) et le nouveau (crypto/wallet/réseau)
  */
 import { query, queryOne, queryAll, queryScalar } from '../database/db.js';
 
@@ -16,7 +17,12 @@ class WithdrawalRecord {
     this.countryName = row.country_name;
     this.operator = row.operator;
     this.phone = row.phone;
-    this.amount = row.amount;
+    this.amount = Number(row.amount);
+    this.crypto = row.crypto || 'USDT';
+    this.walletAddress = row.wallet_address || null;
+    this.network = row.network || null;
+    this.conversionRate = Number(row.conversion_rate || 1);
+    this.cryptoAmount = row.crypto_amount ? Number(row.crypto_amount) : null;
     this.status = row.status;
     this.adminNote = row.admin_note;
     this.processedAt = row.processed_at;
@@ -43,11 +49,28 @@ const Withdrawal = {
   async create(data) {
     const row = await queryOne(
       `INSERT INTO withdrawals
-        (user_id, telegram_id, first_name, beneficiary_name, username, country, country_name, operator, phone, amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        (user_id, telegram_id, first_name, beneficiary_name, username,
+         country, country_name, operator, phone, amount,
+         crypto, wallet_address, network, conversion_rate, crypto_amount)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
-      [data.userId, data.telegramId, data.firstName ?? '', data.beneficiaryName ?? '',
-       data.username ?? null, data.country, data.countryName, data.operator, data.phone, data.amount]
+      [
+        data.userId,
+        data.telegramId,
+        data.firstName ?? '',
+        data.beneficiaryName ?? '',
+        data.username ?? null,
+        data.country ?? null,
+        data.countryName ?? null,
+        data.operator ?? null,
+        data.phone ?? null,
+        data.amount,
+        data.crypto ?? 'USDT',
+        data.walletAddress ?? null,
+        data.network ?? null,
+        data.conversionRate ?? 1,
+        data.cryptoAmount ?? null,
+      ]
     );
     return toRecord(row);
   },
@@ -77,7 +100,6 @@ const Withdrawal = {
     if (filter.status) { sql += ` AND status=$${i++}`; params.push(filter.status); }
     if (filter.userId) { sql += ` AND user_id=$${i++}`; params.push(filter.userId); }
 
-    // Retourne un objet chainable synchrone — seul limit() est async
     const meta = { _sql: sql, _params: params, _order: 'created_at DESC', _limit: 20 };
     return {
       sort(s) {
@@ -96,11 +118,10 @@ const Withdrawal = {
     };
   },
 
-  // Remplace Withdrawal.aggregate pour les stats par statut
   async sumByStatus() {
-    const rows = await queryAll('SELECT status, SUM(amount)::int as total FROM withdrawals GROUP BY status', []);
+    const rows = await queryAll('SELECT status, SUM(amount) as total FROM withdrawals GROUP BY status', []);
     const result = {};
-    rows.forEach(r => { result[r.status] = r.total; });
+    rows.forEach(r => { result[r.status] = Number(r.total); });
     return result;
   },
 };

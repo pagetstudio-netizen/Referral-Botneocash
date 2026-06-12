@@ -128,7 +128,10 @@ export const adminKeyboard = Markup.inlineKeyboard([
     Markup.button.callback('📡 Canaux & Groupes', 'admin_channels'),
     Markup.button.callback('⚙️ Paramètres', 'admin_settings'),
   ],
-  [Markup.button.callback('🔄 Redémarrer', 'admin_restart')],
+  [
+    Markup.button.callback('🪙 Cryptos', 'admin_cryptos'),
+    Markup.button.callback('🔄 Redémarrer', 'admin_restart'),
+  ],
 ]);
 
 // ─── Clavier gestion canaux obligatoires ──────────────────────────────────────
@@ -169,6 +172,26 @@ export const channelLangKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('🌍 Toutes les langues', 'ch_lang_all')],
   [Markup.button.callback('❌ Annuler', 'admin_channels')],
 ]);
+
+// ─── Claviers retrait crypto ──────────────────────────────────────────────────
+export function cryptoSelectionKeyboard(cryptos, lang = 'fr') {
+  const rows = [];
+  for (let i = 0; i < cryptos.length; i += 2) {
+    const row = [Markup.button.callback(`🪙 ${cryptos[i].symbol}`, `crypto_${cryptos[i].symbol}`)];
+    if (cryptos[i + 1]) row.push(Markup.button.callback(`🪙 ${cryptos[i + 1].symbol}`, `crypto_${cryptos[i + 1].symbol}`));
+    rows.push(row);
+  }
+  rows.push([Markup.button.callback(t(lang, 'withdrawal_cancel_btn'), 'cancel_withdrawal')]);
+  return Markup.inlineKeyboard(rows);
+}
+
+export function networkSelectionKeyboard(networks, cryptoSymbol, lang = 'fr') {
+  const rows = (networks || []).map(net => [
+    Markup.button.callback(net, `network_${cryptoSymbol}_${net}`),
+  ]);
+  rows.push([Markup.button.callback(t(lang, 'withdrawal_cancel_btn'), 'cancel_withdrawal')]);
+  return Markup.inlineKeyboard(rows);
+}
 
 // ─── Clavier paramètres admin ─────────────────────────────────────────────────
 export const adminSettingsKeyboard = Markup.inlineKeyboard([

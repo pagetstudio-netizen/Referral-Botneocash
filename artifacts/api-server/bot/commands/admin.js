@@ -6,6 +6,7 @@ import Withdrawal from '../models/Withdrawal.js';
 import Referral from '../models/Referral.js';
 import Transaction from '../models/Transaction.js';
 import RequiredChannel from '../models/RequiredChannel.js';
+import Crypto from '../models/Crypto.js';
 import { getSetting, setSetting } from '../models/Settings.js';
 import {
   adminKeyboard,
@@ -333,8 +334,8 @@ export async function handleTestWdChannel(ctx) {
       `💸 Les notifications de retrait apparaîtront ici :\n\n` +
       `*Exemple :*\n` +
       `💸 Retrait validé pour Jean Dupont\n` +
-      `💰 Montant : 5 000 FCFA\n` +
-      `📱 Orange Money — 07XXXXXXXX\n\n` +
+      `💰 Montant : 15.00 USDT\n` +
+      `🪙 USDT (TRC20) — wallet: TXxx...xxYZ\n\n` +
       `📅 Test effectué le ${new Date().toLocaleString('fr-FR')}`,
       { parse_mode: 'Markdown' }
     );
@@ -420,7 +421,10 @@ export async function handleWithdrawalsList(ctx, status) {
   const { withdrawalAdminKeyboard } = await import('../utils/keyboards.js');
 
   for (const wd of withdrawals) {
-    const text = `${labels[status]}\n\n👤 ${wd.firstName}\n🆔 \`${wd.telegramId}\`\n🌍 ${wd.countryName}\n📱 ${wd.operator}\n📞 \`${wd.phone}\`\n💰 *${formatAmount(wd.amount)}*\n📅 ${formatDate(wd.createdAt)}`;
+    const paymentLine = wd.walletAddress
+      ? `🪙 ${wd.crypto || 'USDT'} (${wd.network || 'N/A'})\n👛 \`${wd.walletAddress?.slice(0, 20)}...\``
+      : `🌍 ${wd.countryName || 'N/A'}\n📱 ${wd.operator || 'N/A'}\n📞 \`${wd.phone || 'N/A'}\``;
+    const text = `${labels[status]}\n\n👤 ${wd.firstName}\n🆔 \`${wd.telegramId}\`\n${paymentLine}\n💰 *${formatAmount(wd.amount)}*\n📅 ${formatDate(wd.createdAt)}`;
     const extra = status === 'pending'
       ? { reply_markup: withdrawalAdminKeyboard(wd._id).reply_markup }
       : { reply_markup: backToAdminKeyboard.reply_markup };
@@ -475,7 +479,7 @@ export async function handleAdminUserSearch(ctx, query) {
 export async function handleAdminCredit(ctx, targetId, debit = false) {
   await ctx.answerCbQuery().catch(() => {});
   adminSessions.set(ctx.from.id, { action: debit ? 'debit_user' : 'credit_user', targetId: Number(targetId) });
-  await ctx.reply(`${debit ? '➖ Débiter' : '➕ Créditer'} l\'utilisateur \`${targetId}\`\n\nEntre le montant en FCFA :`, { parse_mode: 'Markdown' });
+  await ctx.reply(`${debit ? '➖ Débiter' : '➕ Créditer'} l\'utilisateur \`${targetId}\`\n\nEntre le montant en *USDT* (ex: 5.5) :`, { parse_mode: 'Markdown' });
 }
 
 // ─── Bannir/débannir ──────────────────────────────────────────────────────────
@@ -541,6 +545,50 @@ export async function handleAdminBroadcast(ctx) {
   ).catch(() => ctx.reply('📢 Envoie le message à diffuser :'));
 }
 
+// ─── Gestion des cryptomonnaies ───────────────────────────────────────────────
+export async function handleAdminCryptos(ctx) {
+  await ctx.answerCbQuery().catch(() => {});
+  let cryptos = [];
+  try { cryptos = await Crypto.findAll(); } catch (err) {}
+
+  const rows = cryptos.map(c => [
+    Markup.button.callback(`🗑 ${c.symbol} — ${c.name}`, `admin_del_crypto_${c.symbol}`),
+  ]);
+  rows.push([Markup.button.callback('➕ Ajouter une crypto', 'admin_add_crypto')]);
+  rows.push([Markup.button.callback('◀️ Retour', 'admin_back')]);
+
+  const list = cryptos.length
+    ? cryptos.map(c => `🪙 *${c.symbol}* — ${c.name}\n   Réseaux : \`${(c.networks || []).join(', ')}\`\n   CoinGecko : \`${c.coingeckoId || 'N/A'}\``).join('\n\n')
+    : '❌ Aucune crypto configurée.';
+
+  const text = `🪙 *CRYPTOMONNAIES DISPONIBLES*\n\n━━━━━━━━━━━━━━━━━━\n${list}\n━━━━━━━━━━━━━━━━━━\n\nClique sur une crypto pour la *supprimer*, ou ajoutes-en une.`;
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    ...Markup.inlineKeyboard(rows),
+  }).catch(() => ctx.reply(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) }));
+}
+
+export async function handleAddCrypto(ctx) {
+  await ctx.answerCbQuery().catch(() => {});
+  adminSessions.set(ctx.from.id, { action: 'add_crypto_symbol' });
+  await ctx.reply(
+    `➕ *AJOUTER UNE CRYPTO*\n\n*Étape 1/4* — Entrez le *symbole* (ex: USDT, BNB, SOL) :`,
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('❌ Annuler', 'admin_cryptos')]]) }
+  );
+}
+
+export async function handleDeleteCrypto(ctx, symbol) {
+  await ctx.answerCbQuery().catch(() => {});
+  try {
+    await Crypto.deleteBySymbol(symbol);
+    await ctx.reply(`✅ Crypto *${symbol}* supprimée.`, { parse_mode: 'Markdown' });
+    await handleAdminCryptos(ctx).catch(() => {});
+  } catch (err) {
+    await ctx.reply(`❌ Erreur : ${err.message}`);
+  }
+}
+
 // ─── Paramètres admin ─────────────────────────────────────────────────────────
 export async function handleAdminSettings(ctx) {
   await ctx.answerCbQuery().catch(() => {});
@@ -590,9 +638,9 @@ export async function handleAdminInput(ctx) {
       return true;
     }
     case 'credit_user': {
-      const amount = parseInt(text, 10);
+      const amount = parseFloat(text?.replace(',', '.'));
       if (isNaN(amount) || amount <= 0) {
-        await ctx.reply('⚠️ Montant invalide.');
+        await ctx.reply('⚠️ Montant invalide. Entre un nombre décimal positif (ex: 5.5) :');
         return true;
       }
       const user = await User.findOne({ telegramId: session.targetId });
@@ -607,7 +655,7 @@ export async function handleAdminInput(ctx) {
       return true;
     }
     case 'debit_user': {
-      const amount = parseInt(text, 10);
+      const amount = parseFloat(text?.replace(',', '.'));
       if (isNaN(amount) || amount <= 0) { await ctx.reply('⚠️ Montant invalide.'); return true; }
       const user = await User.findOne({ telegramId: session.targetId });
       if (!user) { await ctx.reply('❌ Utilisateur introuvable.'); adminSessions.delete(userId); return true; }
@@ -635,8 +683,47 @@ export async function handleAdminInput(ctx) {
       );
       return true;
     }
+    case 'add_crypto_symbol': {
+      const sym = text?.trim().toUpperCase();
+      if (!sym || sym.length < 2 || sym.length > 10) { await ctx.reply('⚠️ Symbole invalide (2–10 caractères). Réessaie :'); return true; }
+      session.symbol = sym;
+      session.action = 'add_crypto_name';
+      adminSessions.set(userId, session);
+      await ctx.reply(`*Étape 2/4* — Entrez le *nom complet* de *${sym}* (ex: Tether, BNB, Solana) :`, { parse_mode: 'Markdown' });
+      return true;
+    }
+    case 'add_crypto_name': {
+      session.name = text?.trim();
+      session.action = 'add_crypto_networks';
+      adminSessions.set(userId, session);
+      await ctx.reply(`*Étape 3/4* — Entrez les *réseaux* disponibles séparés par des virgules :\n_(ex: TRC20, ERC20, BEP20)_`, { parse_mode: 'Markdown' });
+      return true;
+    }
+    case 'add_crypto_networks': {
+      session.networks = text?.split(',').map(n => n.trim()).filter(Boolean);
+      session.action = 'add_crypto_coingecko';
+      adminSessions.set(userId, session);
+      await ctx.reply(`*Étape 4/4* — Entrez l'*ID CoinGecko* pour le taux de change :\n_(ex: tether, binancecoin, solana — ou "skip" pour USDT)_`, { parse_mode: 'Markdown' });
+      return true;
+    }
+    case 'add_crypto_coingecko': {
+      const coingeckoId = text?.trim().toLowerCase() === 'skip' ? null : text?.trim();
+      try {
+        await Crypto.create({
+          symbol: session.symbol,
+          name: session.name,
+          networks: session.networks || [],
+          coingeckoId,
+        });
+        await ctx.reply(`✅ *${session.symbol}* ajouté !\nRéseaux : \`${(session.networks || []).join(', ')}\``, { parse_mode: 'Markdown' });
+      } catch (err) {
+        await ctx.reply(`❌ Erreur : ${err.message}`);
+      }
+      adminSessions.delete(userId);
+      return true;
+    }
     case 'set_daily_bonus': {
-      const val = parseInt(text, 10);
+      const val = parseFloat(text?.replace(',', '.'));
       if (isNaN(val) || val < 0) { await ctx.reply('⚠️ Valeur invalide.'); return true; }
       await setSetting('daily_bonus', val);
       await ctx.reply(`✅ Bonus quotidien mis à jour : *${formatAmount(val)}*`, { parse_mode: 'Markdown' });
@@ -644,7 +731,7 @@ export async function handleAdminInput(ctx) {
       return true;
     }
     case 'set_referral_bonus': {
-      const val = parseInt(text, 10);
+      const val = parseFloat(text?.replace(',', '.'));
       if (isNaN(val) || val < 0) { await ctx.reply('⚠️ Valeur invalide.'); return true; }
       await setSetting('referral_bonus', val);
       await ctx.reply(`✅ Bonus parrainage mis à jour : *${formatAmount(val)}*`, { parse_mode: 'Markdown' });
@@ -652,7 +739,7 @@ export async function handleAdminInput(ctx) {
       return true;
     }
     case 'set_min_withdraw': {
-      const val = parseInt(text, 10);
+      const val = parseFloat(text?.replace(',', '.'));
       if (isNaN(val) || val < 0) { await ctx.reply('⚠️ Valeur invalide.'); return true; }
       await setSetting('min_withdraw', val);
       await ctx.reply(`✅ Retrait minimum mis à jour : *${formatAmount(val)}*`, { parse_mode: 'Markdown' });

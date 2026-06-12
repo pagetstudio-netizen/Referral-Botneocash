@@ -5,6 +5,7 @@ import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { t } from './i18n.js';
+import { formatAmount } from './messages.js';
 import logger from './logger.js';
 
 export async function creditPendingReferral(filleul, telegram, botUsername) {
@@ -60,9 +61,9 @@ export async function creditPendingReferral(filleul, telegram, botUsername) {
           'referral_credited_notif',
           referrer.firstName,
           filleul.firstName,
-          bonus,
+          formatAmount(bonus),
           referrer.referralCount,
-          referrer.balance.toLocaleString('fr-FR'),
+          formatAmount(referrer.balance),
           shareUrl,
         );
 

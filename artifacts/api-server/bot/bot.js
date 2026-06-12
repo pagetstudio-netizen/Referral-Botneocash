@@ -33,6 +33,9 @@ import {
   handleDeleteReqChannel,
   handleChannelTypeSelect,
   handleChannelLangSelect,
+  handleAdminCryptos,
+  handleAddCrypto,
+  handleDeleteCrypto,
 } from './commands/admin.js';
 import { handleBalance } from './handlers/balance.js';
 import { handleBonus } from './handlers/bonus.js';
@@ -41,9 +44,8 @@ import { handleExplanation } from './handlers/explanation.js';
 import { handleSupport, handleSupportMessage, handleCancelSupport } from './handlers/support.js';
 import {
   handleWithdrawal,
-  handleCountrySelect,
-  handleOperatorSelect,
-  handleBackToCountries,
+  handleCryptoSelect,
+  handleNetworkSelect,
   handleCancelWithdrawal,
   handleConfirmWithdrawal,
   handleWithdrawalTextInput,
@@ -193,16 +195,15 @@ export function createBot() {
     }
   });
 
-  // ─── Callbacks retrait ───────────────────────────────────────────────────────
-  bot.action(/^country_(.+)$/, checkChannelMembership, async (ctx) => {
-    await handleCountrySelect(ctx, ctx.match[1]);
+  // ─── Callbacks retrait crypto ────────────────────────────────────────────────
+  bot.action(/^crypto_([A-Z]+)$/, checkChannelMembership, async (ctx) => {
+    await handleCryptoSelect(ctx, ctx.match[1]);
   });
 
-  bot.action(/^operator_([^_]+)_(.+)$/, checkChannelMembership, async (ctx) => {
-    await handleOperatorSelect(ctx, ctx.match[1], ctx.match[2]);
+  bot.action(/^network_([A-Z]+)_(.+)$/, checkChannelMembership, async (ctx) => {
+    await handleNetworkSelect(ctx, ctx.match[1], ctx.match[2]);
   });
 
-  bot.action('back_to_countries', handleBackToCountries);
   bot.action('cancel_withdrawal', handleCancelWithdrawal);
   bot.action('confirm_withdrawal', checkChannelMembership, handleConfirmWithdrawal);
 
@@ -246,6 +247,9 @@ export function createBot() {
   bot.action(/^set_as_wd_channel_(-?\d+)$/, requireAdmin, (ctx) => handleSetDetectedGroup(ctx, ctx.match[1], 'wd'));
   bot.action(/^set_as_req_channel_(-?\d+)$/, requireAdmin, (ctx) => handleSetDetectedGroup(ctx, ctx.match[1], 'channel'));
   bot.action('admin_withdrawals', requireAdmin, handleAdminWithdrawals);
+  bot.action('admin_cryptos', requireAdmin, handleAdminCryptos);
+  bot.action('admin_add_crypto', requireAdmin, handleAddCrypto);
+  bot.action(/^admin_del_crypto_([A-Z]+)$/, requireAdmin, (ctx) => handleDeleteCrypto(ctx, ctx.match[1]));
   bot.action('admin_users', requireAdmin, handleAdminUsers);
   bot.action('admin_broadcast', requireAdmin, handleAdminBroadcast);
   bot.action('admin_settings', requireAdmin, handleAdminSettings);
@@ -275,19 +279,19 @@ export function createBot() {
   bot.action('set_daily_bonus', requireAdmin, async (ctx) => {
     await ctx.answerCbQuery();
     setAdminSession(ctx.from.id, { action: 'set_daily_bonus' });
-    await ctx.reply('🎁 Nouveau montant du bonus quotidien (FCFA) :');
+    await ctx.reply('🎁 Nouveau montant du bonus quotidien (USDT, ex: 0.5) :');
   });
 
   bot.action('set_referral_bonus', requireAdmin, async (ctx) => {
     await ctx.answerCbQuery();
     setAdminSession(ctx.from.id, { action: 'set_referral_bonus' });
-    await ctx.reply('👥 Nouveau montant du bonus parrainage (FCFA) :');
+    await ctx.reply('👥 Nouveau montant du bonus parrainage (USDT, ex: 1.5) :');
   });
 
   bot.action('set_min_withdraw', requireAdmin, async (ctx) => {
     await ctx.answerCbQuery();
     setAdminSession(ctx.from.id, { action: 'set_min_withdraw' });
-    await ctx.reply('💰 Nouveau montant minimum de retrait (FCFA) :');
+    await ctx.reply('💰 Nouveau retrait minimum (USDT, ex: 15) :');
   });
 
   bot.action('set_required_channel', requireAdmin, async (ctx) => {

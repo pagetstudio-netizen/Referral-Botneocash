@@ -46,14 +46,13 @@ const translations = {
     fr: (name, ref, daily, min) =>
       `👋 *Bonjour ${name}, bienvenue chez NeoCash !* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💸 *Tu peux gagner de l'argent réellement* en partageant simplement ton lien de parrainage avec tes amis et ta famille !\n\n` +
+      `💸 *Gagne de l'argent réel* en partageant simplement ton lien de parrainage avec tes amis et ta famille !\n\n` +
       `🔥 *Comment gagner :*\n` +
-      `👥 *+${ref} FCFA* par ami invité via ton lien\n` +
-      `🎁 *+${daily} FCFA* bonus gratuit chaque jour\n\n` +
-      `💳 *Retraits disponibles via :*\n` +
-      `Moov Money • MTN MoMo • Orange Money\n` +
-      `Wave • TMoney • Airtel Money • Free Money\n\n` +
-      `💰 Retrait à partir de *${min} FCFA* seulement\n` +
+      `👥 *+${ref} USDT* par ami invité via ton lien\n` +
+      `🎁 *+${daily} USDT* bonus gratuit chaque jour\n\n` +
+      `🪙 *Retraits disponibles en crypto :*\n` +
+      `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
+      `💰 Retrait à partir de *${min} USDT* seulement\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *C'est gratuit, sans dépôt — commence maintenant !*`,
     en: (name, ref, daily, min) =>
@@ -61,12 +60,11 @@ const translations = {
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Earn real money* by simply sharing your referral link with friends and family!\n\n` +
       `🔥 *How to earn:*\n` +
-      `👥 *+${ref} FCFA* per friend invited via your link\n` +
-      `🎁 *+${daily} FCFA* free bonus every day\n\n` +
-      `💳 *Withdrawals available via:*\n` +
-      `Moov Money • MTN MoMo • Orange Money\n` +
-      `Wave • TMoney • Airtel Money • Free Money\n\n` +
-      `💰 Withdraw from *${min} FCFA* only\n` +
+      `👥 *+${ref} USDT* per friend invited via your link\n` +
+      `🎁 *+${daily} USDT* free bonus every day\n\n` +
+      `🪙 *Crypto withdrawals available:*\n` +
+      `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
+      `💰 Withdraw from *${min} USDT* only\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *It's free, no deposit required — start now!*`,
     de: (name, ref, daily, min) =>
@@ -74,12 +72,11 @@ const translations = {
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Verdiene echtes Geld*, indem du deinen Empfehlungslink mit Freunden und Familie teilst!\n\n` +
       `🔥 *Wie du verdienst:*\n` +
-      `👥 *+${ref} FCFA* pro eingeladenem Freund über deinen Link\n` +
-      `🎁 *+${daily} FCFA* kostenloser Bonus jeden Tag\n\n` +
-      `💳 *Auszahlungen verfügbar über:*\n` +
-      `Moov Money • MTN MoMo • Orange Money\n` +
-      `Wave • TMoney • Airtel Money • Free Money\n\n` +
-      `💰 Auszahlung ab *${min} FCFA*\n` +
+      `👥 *+${ref} USDT* pro eingeladenem Freund über deinen Link\n` +
+      `🎁 *+${daily} USDT* kostenloser Bonus jeden Tag\n\n` +
+      `🪙 *Krypto-Auszahlungen verfügbar:*\n` +
+      `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
+      `💰 Auszahlung ab *${min} USDT*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *Kostenlos, keine Einzahlung — fang jetzt an!*`,
     zh: (name, ref, daily, min) =>
@@ -87,12 +84,11 @@ const translations = {
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *赚取真实收入*，只需将您的推荐链接分享给朋友和家人！\n\n` +
       `🔥 *如何赚取：*\n` +
-      `👥 每位通过您链接邀请的朋友 *+${ref} FCFA*\n` +
-      `🎁 每天免费奖励 *+${daily} FCFA*\n\n` +
-      `💳 *提现方式：*\n` +
-      `Moov Money • MTN MoMo • Orange Money\n` +
-      `Wave • TMoney • Airtel Money • Free Money\n\n` +
-      `💰 最低提现 *${min} FCFA*\n` +
+      `👥 每位通过您链接邀请的朋友 *+${ref} USDT*\n` +
+      `🎁 每天免费奖励 *+${daily} USDT*\n\n` +
+      `🪙 *加密货币提现方式：*\n` +
+      `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
+      `💰 最低提现 *${min} USDT*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *完全免费，无需存款——立即开始！*`,
   },
@@ -161,10 +157,10 @@ const translations = {
     zh: (v) => `💰 每次推荐收入：*${v}*`,
   },
   referral_cta: {
-    fr: (amount) => `📢 *Partage ton lien et gagne ${amount} FCFA par ami invité !*`,
-    en: (amount) => `📢 *Share your link and earn ${amount} FCFA per invited friend!*`,
-    de: (amount) => `📢 *Teile deinen Link und verdiene ${amount} FCFA pro eingeladenem Freund!*`,
-    zh: (amount) => `📢 *分享您的链接，每邀请一位朋友赚取 ${amount} FCFA！*`,
+    fr: (amount) => `📢 *Partage ton lien et gagne ${amount} USDT par ami invité !*`,
+    en: (amount) => `📢 *Share your link and earn ${amount} USDT per invited friend!*`,
+    de: (amount) => `📢 *Teile deinen Link und verdiene ${amount} USDT pro eingeladenem Freund!*`,
+    zh: (amount) => `📢 *分享您的链接，每邀请一位朋友赚取 ${amount} USDT！*`,
   },
   referral_share_button: {
     fr: '📤 Partager mon lien',
@@ -531,6 +527,104 @@ const translations = {
     zh: '❌ 取消',
   },
 
+  // ── Nouveau flux retrait crypto ───────────────────────────────────────────────
+  withdrawal_no_crypto: {
+    fr: '❌ Aucune crypto disponible pour le retrait. Contacte le support.',
+    en: '❌ No crypto available for withdrawal. Contact support.',
+    de: '❌ Keine Kryptowährung für die Auszahlung verfügbar. Wende dich an den Support.',
+    zh: '❌ 暂无可用于提现的加密货币，请联系客服。',
+  },
+  withdrawal_select_crypto: {
+    fr: '🪙 Choisissez la cryptomonnaie de réception :',
+    en: '🪙 Choose the cryptocurrency to receive:',
+    de: '🪙 Wähle die Empfangskryptowährung:',
+    zh: '🪙 选择接收的加密货币：',
+  },
+  withdrawal_crypto_title: {
+    fr: '💸 *RETRAIT — CRYPTO*',
+    en: '💸 *WITHDRAWAL — CRYPTO*',
+    de: '💸 *AUSZAHLUNG — KRYPTO*',
+    zh: '💸 *提现 — 加密货币*',
+  },
+  withdrawal_wallet_title: {
+    fr: '💸 *RETRAIT — ADRESSE WALLET*',
+    en: '💸 *WITHDRAWAL — WALLET ADDRESS*',
+    de: '💸 *AUSZAHLUNG — WALLET-ADRESSE*',
+    zh: '💸 *提现 — 钱包地址*',
+  },
+  withdrawal_network_title: {
+    fr: '💸 *RETRAIT — RÉSEAU*',
+    en: '💸 *WITHDRAWAL — NETWORK*',
+    de: '💸 *AUSZAHLUNG — NETZWERK*',
+    zh: '💸 *提现 — 网络*',
+  },
+  withdrawal_crypto_label: {
+    fr: (v) => `🪙 Crypto : *${v}*`,
+    en: (v) => `🪙 Crypto: *${v}*`,
+    de: (v) => `🪙 Krypto: *${v}*`,
+    zh: (v) => `🪙 加密货币：*${v}*`,
+  },
+  withdrawal_wallet_label: {
+    fr: (v) => `👛 Wallet : \`${v}\``,
+    en: (v) => `👛 Wallet: \`${v}\``,
+    de: (v) => `👛 Wallet: \`${v}\``,
+    zh: (v) => `👛 钱包：\`${v}\``,
+  },
+  withdrawal_network_label: {
+    fr: (v) => `🔗 Réseau : *${v}*`,
+    en: (v) => `🔗 Network: *${v}*`,
+    de: (v) => `🔗 Netzwerk: *${v}*`,
+    zh: (v) => `🔗 网络：*${v}*`,
+  },
+  withdrawal_enter_wallet: {
+    fr: (crypto) => `👛 Entrez votre adresse *${crypto}* de réception :`,
+    en: (crypto) => `👛 Enter your *${crypto}* receiving wallet address:`,
+    de: (crypto) => `👛 Gib deine *${crypto}* Empfangs-Wallet-Adresse ein:`,
+    zh: (crypto) => `👛 输入您的 *${crypto}* 收款钱包地址：`,
+  },
+  withdrawal_invalid_wallet: {
+    fr: '⚠️ Adresse invalide. Entre une adresse valide (10–150 caractères) :',
+    en: '⚠️ Invalid address. Enter a valid address (10–150 characters):',
+    de: '⚠️ Ungültige Adresse. Gib eine gültige Adresse ein (10–150 Zeichen):',
+    zh: '⚠️ 地址无效，请输入有效地址（10–150个字符）：',
+  },
+  withdrawal_select_network: {
+    fr: '🔗 Sélectionnez le réseau de transfert :',
+    en: '🔗 Select the transfer network:',
+    de: '🔗 Wähle das Überweisungsnetzwerk:',
+    zh: '🔗 选择转账网络：',
+  },
+  withdrawal_rate_error: {
+    fr: '⚠️ Impossible de récupérer le taux de conversion. Réessaie dans quelques secondes.',
+    en: '⚠️ Unable to fetch conversion rate. Please try again in a few seconds.',
+    de: '⚠️ Umrechnungskurs konnte nicht abgerufen werden. Versuche es in einigen Sekunden erneut.',
+    zh: '⚠️ 无法获取汇率，请几秒钟后重试。',
+  },
+  withdrawal_conversion_line: {
+    fr: (amount, crypto, rate) => `🔄 Tu recevras ≈ *${amount}* (1 USDT = ${rate} ${crypto})`,
+    en: (amount, crypto, rate) => `🔄 You will receive ≈ *${amount}* (1 USDT = ${rate} ${crypto})`,
+    de: (amount, crypto, rate) => `🔄 Du erhältst ≈ *${amount}* (1 USDT = ${rate} ${crypto})`,
+    zh: (amount, crypto, rate) => `🔄 您将收到 ≈ *${amount}*（1 USDT = ${rate} ${crypto}）`,
+  },
+  withdrawal_summary_crypto: {
+    fr: (v) => `🪙 Crypto : *${v}*`,
+    en: (v) => `🪙 Crypto: *${v}*`,
+    de: (v) => `🪙 Krypto: *${v}*`,
+    zh: (v) => `🪙 加密货币：*${v}*`,
+  },
+  withdrawal_summary_wallet: {
+    fr: (v) => `👛 Wallet : \`${v}\``,
+    en: (v) => `👛 Wallet: \`${v}\``,
+    de: (v) => `👛 Wallet: \`${v}\``,
+    zh: (v) => `👛 钱包：\`${v}\``,
+  },
+  withdrawal_summary_network: {
+    fr: (v) => `🔗 Réseau : *${v}*`,
+    en: (v) => `🔗 Network: *${v}*`,
+    de: (v) => `🔗 Netzwerk: *${v}*`,
+    zh: (v) => `🔗 网络：*${v}*`,
+  },
+
   // ── Explication ───────────────────────────────────────────────────────────────
   explanation_title: {
     fr: '📖 *COMMENT ÇA MARCHE ?*',
@@ -539,16 +633,16 @@ const translations = {
     zh: '📖 *如何运作？*',
   },
   explanation_referral: {
-    fr: (v) => `👥 *${v} FCFA* par parrainage confirmé`,
-    en: (v) => `👥 *${v} FCFA* per confirmed referral`,
-    de: (v) => `👥 *${v} FCFA* pro bestätigter Empfehlung`,
-    zh: (v) => `👥 每次确认推荐 *${v} FCFA*`,
+    fr: (v) => `👥 *${v} USDT* par parrainage confirmé`,
+    en: (v) => `👥 *${v} USDT* per confirmed referral`,
+    de: (v) => `👥 *${v} USDT* pro bestätigter Empfehlung`,
+    zh: (v) => `👥 每次确认推荐 *${v} USDT*`,
   },
   explanation_bonus: {
-    fr: (v) => `🎁 *${v} FCFA* bonus quotidien`,
-    en: (v) => `🎁 *${v} FCFA* daily bonus`,
-    de: (v) => `🎁 *${v} FCFA* Tagesbonus`,
-    zh: (v) => `🎁 每日奖励 *${v} FCFA*`,
+    fr: (v) => `🎁 *${v} USDT* bonus quotidien`,
+    en: (v) => `🎁 *${v} USDT* daily bonus`,
+    de: (v) => `🎁 *${v} USDT* Tagesbonus`,
+    zh: (v) => `🎁 每日奖励 *${v} USDT*`,
   },
   explanation_min_withdraw: {
     fr: (v) => `💳 Retrait minimum : *${v}*`,
@@ -593,10 +687,10 @@ const translations = {
     zh: '💳 *可用提现方式：*',
   },
   explanation_methods: {
-    fr: 'MTN • Moov • Orange Money • TMoney • Wave • Airtel Money • Flooz • Free Money • Coris Money',
-    en: 'MTN • Moov • Orange Money • TMoney • Wave • Airtel Money • Flooz • Free Money • Coris Money',
-    de: 'MTN • Moov • Orange Money • TMoney • Wave • Airtel Money • Flooz • Free Money • Coris Money',
-    zh: 'MTN • Moov • Orange Money • TMoney • Wave • Airtel Money • Flooz • Free Money • Coris Money',
+    fr: 'USDT (TRC20 • ERC20 • BEP20) • BNB • BTC • ETH • SOL • TRX • MATIC et plus',
+    en: 'USDT (TRC20 • ERC20 • BEP20) • BNB • BTC • ETH • SOL • TRX • MATIC and more',
+    de: 'USDT (TRC20 • ERC20 • BEP20) • BNB • BTC • ETH • SOL • TRX • MATIC und mehr',
+    zh: 'USDT（TRC20 • ERC20 • BEP20）• BNB • BTC • ETH • SOL • TRX • MATIC 等',
   },
   explanation_free: {
     fr: '⚡ *Pas de dépôt requis — 100% gratuit !*',
@@ -751,14 +845,14 @@ const translations = {
 
   // ── Notifications utilisateur ────────────────────────────────────────────────
   withdrawal_approved_notif: {
-    fr: (amount, operator, phone) =>
-      `✅ *RETRAIT APPROUVÉ !*\n\n━━━━━━━━━━━━━━━━━━\n💰 Montant : *${amount}*\n📱 Opérateur : *${operator}*\n📞 Numéro : \`${phone}\`\n\n🎉 Ton paiement a été effectué !`,
-    en: (amount, operator, phone) =>
-      `✅ *WITHDRAWAL APPROVED!*\n\n━━━━━━━━━━━━━━━━━━\n💰 Amount: *${amount}*\n📱 Operator: *${operator}*\n📞 Number: \`${phone}\`\n\n🎉 Your payment has been processed!`,
-    de: (amount, operator, phone) =>
-      `✅ *AUSZAHLUNG GENEHMIGT!*\n\n━━━━━━━━━━━━━━━━━━\n💰 Betrag: *${amount}*\n📱 Anbieter: *${operator}*\n📞 Nummer: \`${phone}\`\n\n🎉 Deine Zahlung wurde verarbeitet!`,
-    zh: (amount, operator, phone) =>
-      `✅ *提现已批准！*\n\n━━━━━━━━━━━━━━━━━━\n💰 金额：*${amount}*\n📱 运营商：*${operator}*\n📞 号码：\`${phone}\`\n\n🎉 您的付款已处理！`,
+    fr: (amount, crypto, wallet, cryptoLine) =>
+      `✅ *RETRAIT APPROUVÉ !*\n\n━━━━━━━━━━━━━━━━━━\n💰 Montant : *${amount}*\n🪙 Crypto : *${crypto}*\n👛 Wallet : \`${wallet}\`${cryptoLine}\n\n🎉 Ta demande a été traitée !`,
+    en: (amount, crypto, wallet, cryptoLine) =>
+      `✅ *WITHDRAWAL APPROVED!*\n\n━━━━━━━━━━━━━━━━━━\n💰 Amount: *${amount}*\n🪙 Crypto: *${crypto}*\n👛 Wallet: \`${wallet}\`${cryptoLine}\n\n🎉 Your request has been processed!`,
+    de: (amount, crypto, wallet, cryptoLine) =>
+      `✅ *AUSZAHLUNG GENEHMIGT!*\n\n━━━━━━━━━━━━━━━━━━\n💰 Betrag: *${amount}*\n🪙 Krypto: *${crypto}*\n👛 Wallet: \`${wallet}\`${cryptoLine}\n\n🎉 Deine Anfrage wurde bearbeitet!`,
+    zh: (amount, crypto, wallet, cryptoLine) =>
+      `✅ *提现已批准！*\n\n━━━━━━━━━━━━━━━━━━\n💰 金额：*${amount}*\n🪙 加密货币：*${crypto}*\n👛 钱包：\`${wallet}\`${cryptoLine}\n\n🎉 您的请求已处理！`,
   },
   withdrawal_rejected_notif: {
     fr: (amount) =>
@@ -788,53 +882,53 @@ const translations = {
   },
   referral_pending_notif: {
     fr: (firstName, bonus) =>
-      `🔔 *Quelqu'un a cliqué sur ton lien !*\n\n👤 *${firstName}* vient d'utiliser ton lien de parrainage.\n\n⏳ En attente de vérification des canaux...\n💰 Tu gagneras *${bonus} FCFA* dès que la vérification sera validée.`,
+      `🔔 *Quelqu'un a cliqué sur ton lien !*\n\n👤 *${firstName}* vient d'utiliser ton lien de parrainage.\n\n⏳ En attente de vérification des canaux...\n💰 Tu gagneras *${bonus} USDT* dès que la vérification sera validée.`,
     en: (firstName, bonus) =>
-      `🔔 *Someone clicked your link!*\n\n👤 *${firstName}* just used your referral link.\n\n⏳ Waiting for channel verification...\n💰 You will earn *${bonus} FCFA* once verification is confirmed.`,
+      `🔔 *Someone clicked your link!*\n\n👤 *${firstName}* just used your referral link.\n\n⏳ Waiting for channel verification...\n💰 You will earn *${bonus} USDT* once verification is confirmed.`,
     de: (firstName, bonus) =>
-      `🔔 *Jemand hat auf deinen Link geklickt!*\n\n👤 *${firstName}* hat gerade deinen Empfehlungslink verwendet.\n\n⏳ Warten auf Kanalverifizierung...\n💰 Du wirst *${bonus} FCFA* verdienen, sobald die Verifizierung bestätigt ist.`,
+      `🔔 *Jemand hat auf deinen Link geklickt!*\n\n👤 *${firstName}* hat gerade deinen Empfehlungslink verwendet.\n\n⏳ Warten auf Kanalverifizierung...\n💰 Du wirst *${bonus} USDT* verdienen, sobald die Verifizierung bestätigt ist.`,
     zh: (firstName, bonus) =>
-      `🔔 *有人点击了您的链接！*\n\n👤 *${firstName}* 刚刚使用了您的推荐链接。\n\n⏳ 等待频道验证...\n💰 验证通过后您将获得 *${bonus} FCFA*。`,
+      `🔔 *有人点击了您的链接！*\n\n👤 *${firstName}* 刚刚使用了您的推荐链接。\n\n⏳ 等待频道验证...\n💰 验证通过后您将获得 *${bonus} USDT*。`,
   },
   referral_credited_notif: {
     fr: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *Félicitations ${refFirstName} !*\n\n` +
-      `💸 Tu viens de gagner *${bonus} FCFA* !\n\n` +
+      `💸 Tu viens de gagner *${bonus} USDT* !\n\n` +
       `👤 *${filFirstName}* vient de rejoindre NeoCash grâce à ton lien.\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💰 Bonus crédité : *+${bonus} FCFA*\n` +
+      `💰 Bonus crédité : *+${bonus} USDT*\n` +
       `👥 Total filleuls validés : *${count}*\n` +
-      `💳 Nouveau solde : *${balance} FCFA*\n` +
+      `💳 Nouveau solde : *${balance}*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `📲 Partage encore ton lien pour gagner plus !`,
     en: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *Congratulations ${refFirstName}!*\n\n` +
-      `💸 You just earned *${bonus} FCFA*!\n\n` +
+      `💸 You just earned *${bonus} USDT*!\n\n` +
       `👤 *${filFirstName}* just joined NeoCash through your link.\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💰 Bonus credited: *+${bonus} FCFA*\n` +
+      `💰 Bonus credited: *+${bonus} USDT*\n` +
       `👥 Total validated referrals: *${count}*\n` +
-      `💳 New balance: *${balance} FCFA*\n` +
+      `💳 New balance: *${balance}*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `📲 Share your link again to earn more!`,
     de: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *Glückwunsch ${refFirstName}!*\n\n` +
-      `💸 Du hast gerade *${bonus} FCFA* verdient!\n\n` +
+      `💸 Du hast gerade *${bonus} USDT* verdient!\n\n` +
       `👤 *${filFirstName}* ist gerade über deinen Link bei NeoCash beigetreten.\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💰 Bonus gutgeschrieben: *+${bonus} FCFA*\n` +
+      `💰 Bonus gutgeschrieben: *+${bonus} USDT*\n` +
       `👥 Bestätigte Empfehlungen: *${count}*\n` +
-      `💳 Neues Guthaben: *${balance} FCFA*\n` +
+      `💳 Neues Guthaben: *${balance}*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `📲 Teile deinen Link erneut, um mehr zu verdienen!`,
     zh: (refFirstName, filFirstName, bonus, count, balance, shareUrl) =>
       `🎉 *恭喜 ${refFirstName}！*\n\n` +
-      `💸 您刚刚赚取了 *${bonus} FCFA*！\n\n` +
+      `💸 您刚刚赚取了 *${bonus} USDT*！\n\n` +
       `👤 *${filFirstName}* 刚刚通过您的链接加入了 NeoCash。\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
-      `💰 已奖励：*+${bonus} FCFA*\n` +
+      `💰 已奖励：*+${bonus} USDT*\n` +
       `👥 已确认推荐总计：*${count}*\n` +
-      `💳 新余额：*${balance} FCFA*\n` +
+      `💳 新余额：*${balance}*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `📲 再次分享您的链接以赚取更多！`,
   },

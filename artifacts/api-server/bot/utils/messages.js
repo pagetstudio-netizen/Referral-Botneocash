@@ -1,18 +1,32 @@
 /**
  * Templates de messages pour NeoCash — avec support multilingue
+ * Système basé sur USDT / cryptomonnaies
  */
 import { getSetting } from '../models/Settings.js';
 import { t } from './i18n.js';
 
-// ─── Échappement Markdown Telegram ────────────────────────────────────────────
 export function escapeMarkdown(text) {
   if (!text) return '';
   return String(text).replace(/[*_`\[\]]/g, '\\$&');
 }
 
-// ─── Formatage ────────────────────────────────────────────────────────────────
+// ─── Formatage montant USDT ────────────────────────────────────────────────────
 export function formatAmount(amount) {
-  return `${Number(amount).toLocaleString('fr-FR')} FCFA`;
+  const num = Number(amount);
+  if (isNaN(num)) return '0.00 USDT';
+  return `${parseFloat(num.toFixed(2))} USDT`;
+}
+
+// Formatage montant crypto avec précision adaptée au symbole
+export function formatCryptoAmount(amount, symbol = 'USDT') {
+  const num = Number(amount);
+  if (isNaN(num)) return `0 ${symbol}`;
+  if (symbol === 'USDT' || symbol === 'USDC') return `${num.toFixed(2)} ${symbol}`;
+  if (symbol === 'BTC') return `${num.toFixed(8)} ${symbol}`;
+  if (num < 0.0001) return `${num.toFixed(8)} ${symbol}`;
+  if (num < 0.01) return `${num.toFixed(6)} ${symbol}`;
+  if (num < 1) return `${num.toFixed(4)} ${symbol}`;
+  return `${parseFloat(num.toFixed(4))} ${symbol}`;
 }
 
 export function formatDate(date) {
@@ -33,11 +47,10 @@ export function formatDuration(ms) {
 
 // ─── Message de bienvenue ─────────────────────────────────────────────────────
 export async function welcomeMessage(firstName, lang = 'fr') {
-  const dailyBonus  = await getSetting('daily_bonus')    || 100;
-  const referralBonus = await getSetting('referral_bonus') || 120;
-  const minWithdraw = await getSetting('min_withdraw')   || 800;
-
-  return t(lang, 'welcome', firstName, referralBonus, dailyBonus, formatAmount(minWithdraw));
+  const dailyBonus    = await getSetting('daily_bonus')    || 0.5;
+  const referralBonus = await getSetting('referral_bonus') || 1.5;
+  const minWithdraw   = await getSetting('min_withdraw')   || 15;
+  return t(lang, 'welcome', firstName, referralBonus, dailyBonus, minWithdraw);
 }
 
 // ─── Message solde ─────────────────────────────────────────────────────────────
@@ -67,7 +80,7 @@ export function referralMessage(user, botUsername, lang = 'fr') {
     t(lang, 'referral_validated', user.referralCount) + '\n' +
     t(lang, 'referral_earnings_label', formatAmount(user.referralEarnings)) + '\n' +
     SEP + '\n\n' +
-    t(lang, 'referral_cta', user.referralEarnings || 120)
+    t(lang, 'referral_cta', 1.5)
   );
 }
 
@@ -96,40 +109,54 @@ export function bonusAlreadyClaimedMessage(timeLeft, lang = 'fr') {
   );
 }
 
-// ─── Récapitulatif retrait ─────────────────────────────────────────────────────
+// ─── Récapitulatif retrait crypto ─────────────────────────────────────────────
 export function withdrawSummaryMessage(data, lang = 'fr') {
   const SEP = '━━━━━━━━━━━━━━━━━━';
+  const isSameCrypto = !data.cryptoAmount || data.crypto === 'USDT';
+  let convLine = '';
+  if (!isSameCrypto && data.cryptoAmount && data.rate) {
+    convLine = t(lang, 'withdrawal_conversion_line',
+      formatCryptoAmount(data.cryptoAmount, data.crypto),
+      data.crypto,
+      data.rate
+    ) + '\n';
+  }
   return (
     t(lang, 'withdrawal_summary_title') + '\n\n' +
     SEP + '\n' +
-    t(lang, 'withdrawal_summary_country', data.countryName) + '\n' +
-    t(lang, 'withdrawal_summary_operator', data.operator) + '\n' +
-    t(lang, 'withdrawal_summary_beneficiary', data.beneficiaryName) + '\n' +
+    t(lang, 'withdrawal_summary_crypto', data.crypto) + '\n' +
+    t(lang, 'withdrawal_summary_network', data.network || 'N/A') + '\n' +
+    t(lang, 'withdrawal_summary_wallet', escapeMarkdown(maskWallet(data.wallet || data.walletAddress))) + '\n' +
     t(lang, 'withdrawal_summary_amount', formatAmount(data.amount)) + '\n' +
-    t(lang, 'withdrawal_summary_phone', data.phone) + '\n' +
+    convLine +
     SEP + '\n\n' +
     t(lang, 'withdrawal_confirm_question')
   );
 }
 
+function maskWallet(addr) {
+  if (!addr || addr.length < 8) return addr || '—';
+  return addr.slice(0, 6) + '...' + addr.slice(-6);
+}
+
 // ─── Message explication ───────────────────────────────────────────────────────
 export async function explanationMessage(lang = 'fr') {
-  const dailyBonus = await getSetting('daily_bonus') || 100;
-  const referralBonus = await getSetting('referral_bonus') || 120;
-  const minWithdraw = await getSetting('min_withdraw') || 800;
+  const dailyBonus    = await getSetting('daily_bonus')    || 0.5;
+  const referralBonus = await getSetting('referral_bonus') || 1.5;
+  const minWithdraw   = await getSetting('min_withdraw')   || 15;
   const SEP = '━━━━━━━━━━━━━━━━━━';
   return (
     t(lang, 'explanation_title') + '\n\n' +
     SEP + '\n' +
     t(lang, 'explanation_referral', referralBonus) + '\n' +
     t(lang, 'explanation_bonus', dailyBonus) + '\n' +
-    t(lang, 'explanation_min_withdraw', formatAmount(minWithdraw)) + '\n' +
+    t(lang, 'explanation_min_withdraw', `${minWithdraw} USDT`) + '\n' +
     SEP + '\n\n' +
     t(lang, 'explanation_steps_title') + '\n\n' +
     t(lang, 'explanation_step1') + '\n' +
     t(lang, 'explanation_step2') + '\n' +
     t(lang, 'explanation_step3') + '\n' +
-    t(lang, 'explanation_step4', formatAmount(minWithdraw)) + '\n\n' +
+    t(lang, 'explanation_step4', `${minWithdraw} USDT`) + '\n\n' +
     t(lang, 'explanation_methods_title') + '\n' +
     t(lang, 'explanation_methods') + '\n\n' +
     SEP + '\n' +
@@ -144,7 +171,6 @@ export function buildMultiChannelVerifyMessage(channels, lang = 'fr') {
     const label = ch.label || ch.chatIdOrUrl;
     return `${i + 1}️⃣ ${icon} *${label}*`;
   });
-
   const SEP = '━━━━━━━━━━━━━━━━━━';
   return (
     t(lang, 'channel_verify_title') + '\n\n' +
@@ -156,12 +182,11 @@ export function buildMultiChannelVerifyMessage(channels, lang = 'fr') {
   );
 }
 
-// ─── Alias pour compatibilité backward ────────────────────────────────────────
 export function multiChannelVerifyMessage(channels) {
   return buildMultiChannelVerifyMessage(channels, 'fr');
 }
 
-// ─── Message notification admin ────────────────────────────────────────────────
+// ─── Notifications admin ───────────────────────────────────────────────────────
 export function adminNewUserNotif(user) {
   return `🆕 *NOUVEAU UTILISATEUR*
 
@@ -174,14 +199,18 @@ export function adminNewUserNotif(user) {
 }
 
 export function adminWithdrawNotif(wd) {
+  const paymentInfo = wd.walletAddress
+    ? `🪙 Crypto : *${wd.crypto}* (${wd.network || 'N/A'})\n👛 Wallet : \`${wd.walletAddress}\``
+    : `🌍 Pays : ${escapeMarkdown(wd.countryName || 'N/A')}\n📱 Opérateur : ${escapeMarkdown(wd.operator || 'N/A')}\n📞 Numéro : \`${wd.phone || 'N/A'}\``;
+  const cryptoLine = wd.cryptoAmount && wd.crypto !== 'USDT'
+    ? `\n🔄 Équivalent : *${formatCryptoAmount(wd.cryptoAmount, wd.crypto)}*`
+    : '';
   return `💸 *NOUVELLE DEMANDE DE RETRAIT*
 
 👤 Utilisateur : ${escapeMarkdown(wd.firstName)}
 🆔 ID : \`${wd.telegramId}\`
-🌍 Pays : ${escapeMarkdown(wd.countryName)}
-📱 Opérateur : ${escapeMarkdown(wd.operator)}
-📞 Numéro : \`${wd.phone}\`
-💰 Montant : *${formatAmount(wd.amount)}*
+${paymentInfo}
+💰 Montant : *${formatAmount(wd.amount)}*${cryptoLine}
 🔖 Réf : \`${wd._id}\`
 📅 ${formatDate(new Date())}`;
 }

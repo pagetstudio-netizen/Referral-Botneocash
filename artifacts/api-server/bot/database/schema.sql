@@ -141,3 +141,81 @@ CREATE TABLE IF NOT EXISTS channel_verifications (
 
 CREATE INDEX IF NOT EXISTS idx_channel_verif_user ON channel_verifications(user_telegram_id);
 CREATE INDEX IF NOT EXISTS idx_channel_verif_channel ON channel_verifications(channel_id);
+
+-- ─── Migration vers USDT/crypto ───────────────────────────────────────────────
+-- Convertir les colonnes monétaires de INTEGER en DECIMAL pour USDT
+DO $$
+BEGIN
+  IF (SELECT data_type FROM information_schema.columns WHERE table_name='users' AND column_name='balance' AND table_schema='public') = 'integer' THEN
+    ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(18,8) USING balance::DECIMAL(18,8);
+    ALTER TABLE users ALTER COLUMN referral_earnings TYPE DECIMAL(18,8) USING referral_earnings::DECIMAL(18,8);
+    ALTER TABLE users ALTER COLUMN bonus_earnings TYPE DECIMAL(18,8) USING bonus_earnings::DECIMAL(18,8);
+    ALTER TABLE users ALTER COLUMN total_withdrawn TYPE DECIMAL(18,8) USING total_withdrawn::DECIMAL(18,8);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF (SELECT data_type FROM information_schema.columns WHERE table_name='withdrawals' AND column_name='amount' AND table_schema='public') = 'integer' THEN
+    ALTER TABLE withdrawals ALTER COLUMN amount TYPE DECIMAL(18,8) USING amount::DECIMAL(18,8);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF (SELECT data_type FROM information_schema.columns WHERE table_name='referrals' AND column_name='amount' AND table_schema='public') = 'integer' THEN
+    ALTER TABLE referrals ALTER COLUMN amount TYPE DECIMAL(18,8) USING amount::DECIMAL(18,8);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF (SELECT data_type FROM information_schema.columns WHERE table_name='transactions' AND column_name='amount' AND table_schema='public') = 'integer' THEN
+    ALTER TABLE transactions ALTER COLUMN amount TYPE DECIMAL(18,8) USING amount::DECIMAL(18,8);
+    ALTER TABLE transactions ALTER COLUMN balance_before TYPE DECIMAL(18,8) USING balance_before::DECIMAL(18,8);
+    ALTER TABLE transactions ALTER COLUMN balance_after TYPE DECIMAL(18,8) USING balance_after::DECIMAL(18,8);
+  END IF;
+END $$;
+
+-- Rendre nullable les colonnes pays/opérateur/téléphone de withdrawals (remplacés par crypto/wallet/réseau)
+ALTER TABLE withdrawals ALTER COLUMN country DROP NOT NULL;
+ALTER TABLE withdrawals ALTER COLUMN country_name DROP NOT NULL;
+ALTER TABLE withdrawals ALTER COLUMN operator DROP NOT NULL;
+ALTER TABLE withdrawals ALTER COLUMN phone DROP NOT NULL;
+
+-- Nouvelles colonnes pour le retrait crypto
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS crypto TEXT DEFAULT 'USDT';
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS wallet_address TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS network TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS conversion_rate DECIMAL(20,8) DEFAULT 1;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS crypto_amount DECIMAL(20,8);
+
+-- ─── Table des cryptomonnaies disponibles pour le retrait ────────────────────
+CREATE TABLE IF NOT EXISTS cryptos (
+  id SERIAL PRIMARY KEY,
+  symbol TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  coingecko_id TEXT NOT NULL,
+  networks TEXT[] NOT NULL DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Cryptos par défaut
+INSERT INTO cryptos (symbol, name, coingecko_id, networks, display_order) VALUES
+  ('USDT', 'Tether USDT', 'tether', ARRAY['TRC20', 'ERC20', 'BEP20'], 0),
+  ('BNB', 'BNB', 'binancecoin', ARRAY['BEP20'], 1),
+  ('BTC', 'Bitcoin', 'bitcoin', ARRAY['Bitcoin', 'Lightning'], 2),
+  ('ETH', 'Ethereum', 'ethereum', ARRAY['ERC20', 'BEP20'], 3),
+  ('SOL', 'Solana', 'solana', ARRAY['Solana'], 4),
+  ('TRX', 'TRON', 'tron', ARRAY['TRC20'], 5),
+  ('MATIC', 'Polygon', 'matic-network', ARRAY['Polygon'], 6)
+ON CONFLICT (symbol) DO NOTHING;
+
+-- ─── Mise à jour des paramètres par défaut vers USDT ─────────────────────────
+INSERT INTO settings (key, value, description) VALUES
+  ('daily_bonus',    '0.5',  'Bonus quotidien en USDT'),
+  ('referral_bonus', '1.5',  'Bonus de parrainage en USDT'),
+  ('min_withdraw',   '15',   'Retrait minimum en USDT')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = NOW();
