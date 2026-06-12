@@ -11,7 +11,7 @@ class ReferralRecord {
     this.referredId = Number(row.referred_id);
     this.referredUsername = row.referred_username;
     this.referredFirstName = row.referred_first_name;
-    this.amount = row.amount;
+    this.amount = parseFloat(row.amount) || 0;
     this.status = row.status;
     this.creditedAt = row.credited_at;
     this.createdAt = row.created_at;

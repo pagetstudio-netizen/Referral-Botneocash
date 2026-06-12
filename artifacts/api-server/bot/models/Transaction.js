@@ -9,9 +9,9 @@ class TransactionRecord {
     this._id = row.id;
     this.userId = Number(row.user_id);
     this.type = row.type;
-    this.amount = row.amount;
-    this.balanceBefore = row.balance_before;
-    this.balanceAfter = row.balance_after;
+    this.amount = parseFloat(row.amount) || 0;
+    this.balanceBefore = parseFloat(row.balance_before) || 0;
+    this.balanceAfter = parseFloat(row.balance_after) || 0;
     this.description = row.description;
     this.referenceId = row.reference_id;
     this.createdAt = row.created_at;
