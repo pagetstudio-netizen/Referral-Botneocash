@@ -26,18 +26,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Admin web routes
+// ─── Routes API (toujours en premier) ────────────────────────────────────────
 app.use('/api', adminRouter);
-
-// ─── Tableau de bord admin (fichiers statiques en production) ─────────────────
-const ADMIN_DIST = join(__dirname, '..', '..', 'admin-dashboard', 'dist', 'public');
-if (existsSync(ADMIN_DIST)) {
-  app.use('/admin', express.static(ADMIN_DIST, { index: false }));
-  // SPA fallback — toutes les routes /admin/* renvoient index.html
-  app.get('/admin', (req, res) => res.sendFile(join(ADMIN_DIST, 'index.html')));
-  app.get('/admin/*', (req, res) => res.sendFile(join(ADMIN_DIST, 'index.html')));
-  logger.info('📊 Tableau de bord admin servi depuis /admin');
-}
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -66,33 +56,18 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// Page de statut si les secrets ne sont pas configurés
-app.get('/', (req, res) => {
-  const missing = [];
-  if (!process.env.BOT_TOKEN) missing.push('BOT_TOKEN');
-  if (!process.env.DATABASE_URL && !process.env.SUPABASE_DB_URL) missing.push('DATABASE_URL');
-  if (!process.env.ADMIN_IDS) missing.push('ADMIN_IDS');
-
-  if (missing.length > 0) {
-    return res.send(`
-      <html><body style="font-family:monospace;padding:20px;background:#1a1a2e;color:#e0e0e0">
-        <h1>🤖 Moon Crypto Bot</h1>
-        <p style="color:#ff6b6b">⚠️ Variables manquantes : <strong>${missing.join(', ')}</strong></p>
-        <p>Configure ces secrets dans l'onglet <strong>Secrets</strong> de Replit.</p>
-        <hr/>
-        <h3>Variables requises :</h3>
-        <ul>
-          <li><code>BOT_TOKEN</code> — Token du bot (@BotFather)</li>
-          <li><code>DATABASE_URL</code> — URL de connexion PostgreSQL (fournie automatiquement par Replit)</li>
-          <li><code>ADMIN_IDS</code> — Ton ID Telegram (@userinfobot)</li>
-        </ul>
-        <p style="color:#4ecdc4">✅ <a href="/api/health" style="color:#4ecdc4">GET /api/health</a></p>
-      </body></html>
-    `);
-  }
-
-  res.json({ status: 'ok', message: 'Moon Crypto Bot opérationnel' });
-});
+// ─── Tableau de bord admin (SPA — servi à la racine /) ───────────────────────
+const ADMIN_DIST = join(__dirname, '..', '..', 'admin-dashboard', 'dist', 'public');
+if (existsSync(ADMIN_DIST)) {
+  // Fichiers statiques (JS, CSS, images…) servis directement
+  app.use(express.static(ADMIN_DIST, { index: false }));
+  // SPA fallback — toutes les routes non-API renvoient index.html
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
+    res.sendFile(join(ADMIN_DIST, 'index.html'));
+  });
+  logger.info('📊 Tableau de bord admin servi depuis /');
+}
 
 app.listen(PORT, () => {
   logger.info(`🌐 Serveur HTTP démarré sur le port ${PORT}`);

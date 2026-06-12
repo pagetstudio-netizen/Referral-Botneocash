@@ -30,19 +30,19 @@ echo "✔ Dépendances installées"
 echo ""
 echo "🔍 Vérification des fichiers de build..."
 
-if [ ! -f "$API_DIR/dist/index.mjs" ]; then
-  echo "❌ ERREUR : dist/index.mjs introuvable !"
+if [ ! -f "$API_DIR/dist/index.cjs" ]; then
+  echo "❌ ERREUR : dist/index.cjs introuvable !"
   echo "   → Lance le build depuis Replit et re-push sur GitHub."
   exit 1
 fi
 
-echo "✔ dist/index.mjs présent ($(du -sh "$API_DIR/dist/index.mjs" | cut -f1))"
+echo "✔ dist/index.cjs présent ($(du -sh "$API_DIR/dist/index.cjs" | cut -f1))"
 
 ADMIN_DIST="$ROOT_DIR/artifacts/admin-dashboard/dist/public/index.html"
 if [ -f "$ADMIN_DIST" ]; then
-  echo "✔ Dashboard admin présent"
+  echo "✔ Dashboard admin présent (servi à la racine /)"
 else
-  echo "⚠️  Dashboard admin absent (optionnel)"
+  echo "⚠️  Dashboard admin absent — relance le build depuis Replit"
 fi
 
 # ─── 3. Dossier logs ───────────────────────────────────────────────────────────
@@ -70,6 +70,6 @@ fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Déploiement terminé !"
-echo "   Santé API  : /api/health"
-echo "   Dashboard  : /admin"
+echo "   Dashboard  : https://cotedor.online/"
+echo "   Santé API  : https://cotedor.online/api/health"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

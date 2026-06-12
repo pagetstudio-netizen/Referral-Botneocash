@@ -41216,6 +41216,7 @@ __export(auth_exports, {
   checkBanned: () => checkBanned,
   checkChannelMembership: () => checkChannelMembership,
   checkMaintenance: () => checkMaintenance,
+  clearAdminCache: () => clearAdminCache,
   clearMembershipCache: () => clearMembershipCache,
   getMissingChannels: () => getMissingChannels,
   getOrCreateUser: () => getOrCreateUser,
@@ -41347,14 +41348,26 @@ async function sendMultiVerifyMessage(ctx, missingChannels) {
   }).catch(() => {
   });
 }
+function clearAdminCache(telegramId) {
+  if (telegramId) _adminCache.delete(Number(telegramId));
+  else _adminCache.clear();
+}
 async function isUserAdmin(telegramId) {
   if (!telegramId) return false;
+  const id = Number(telegramId);
+  const cached = _adminCache.get(id);
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
   const adminIds = (process.env.ADMIN_IDS || "").split(",").map(Number).filter(Boolean);
-  if (adminIds.includes(Number(telegramId))) return true;
+  if (adminIds.includes(id)) {
+    _adminCache.set(id, { value: true, expiresAt: Date.now() + ADMIN_CACHE_TTL });
+    return true;
+  }
   try {
     const Admin2 = (await Promise.resolve().then(() => (init_Admin(), Admin_exports))).default;
-    const admin = await Admin2.findOne({ telegramId: Number(telegramId) });
-    return !!admin;
+    const admin = await Admin2.findOne({ telegramId: id });
+    const result = !!admin;
+    _adminCache.set(id, { value: result, expiresAt: Date.now() + ADMIN_CACHE_TTL });
+    return result;
   } catch {
     return false;
   }
@@ -41362,7 +41375,7 @@ async function isUserAdmin(telegramId) {
 function generateReferralCode(telegramId) {
   return `NC${telegramId}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
-var _lastSavedAt, SAVE_THROTTLE, _membershipCache, MEMBERSHIP_TTL;
+var _lastSavedAt, SAVE_THROTTLE, _membershipCache, MEMBERSHIP_TTL, _adminCache, ADMIN_CACHE_TTL;
 var init_auth = __esm({
   "bot/middleware/auth.js"() {
     "use strict";
@@ -41377,6 +41390,8 @@ var init_auth = __esm({
     SAVE_THROTTLE = 5 * 6e4;
     _membershipCache = /* @__PURE__ */ new Map();
     MEMBERSHIP_TTL = 5 * 6e4;
+    _adminCache = /* @__PURE__ */ new Map();
+    ADMIN_CACHE_TTL = 5 * 6e4;
   }
 });
 
@@ -41682,10 +41697,13 @@ async function handleLanguageSet(ctx, lang) {
   }
   const caption = await welcomeMessage(tg.first_name, lang);
   const keyboard = getMainKeyboard(lang);
+  await ctx.deleteMessage().catch(() => {
+  });
   try {
-    await ctx.editMessageText(caption, { parse_mode: "Markdown" }).catch(() => {
-    });
-    await ctx.reply(caption, { parse_mode: "Markdown", ...keyboard });
+    await ctx.replyWithPhoto(
+      { source: (0, import_fs3.createReadStream)(LOGO_PATH2) },
+      { caption, parse_mode: "Markdown", ...keyboard }
+    );
   } catch {
     await ctx.reply(caption, { parse_mode: "Markdown", ...keyboard });
   }
@@ -50364,6 +50382,7 @@ var import_express2 = __toESM(require_express2(), 1);
 var import_fs5 = require("fs");
 var import_path6 = require("path");
 var import_url6 = require("url");
+var import_http4 = require("http");
 init_logger();
 
 // bot/routes/admin.js
@@ -50966,13 +50985,6 @@ app.use((req, res, next) => {
   next();
 });
 app.use("/api", admin_default);
-var ADMIN_DIST = (0, import_path6.join)(__dirname5, "..", "..", "admin-dashboard", "dist", "public");
-if ((0, import_fs5.existsSync)(ADMIN_DIST)) {
-  app.use("/admin", import_express2.default.static(ADMIN_DIST, { index: false }));
-  app.get("/admin", (req, res) => res.sendFile((0, import_path6.join)(ADMIN_DIST, "index.html")));
-  app.get("/admin/*", (req, res) => res.sendFile((0, import_path6.join)(ADMIN_DIST, "index.html")));
-  logger_default.info("\u{1F4CA} Tableau de bord admin servi depuis /admin");
-}
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
@@ -50998,33 +51010,30 @@ app.get("/api/stats", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get("/", (req, res) => {
-  const missing = [];
-  if (!process.env.BOT_TOKEN) missing.push("BOT_TOKEN");
-  if (!process.env.DATABASE_URL && !process.env.SUPABASE_DB_URL) missing.push("DATABASE_URL");
-  if (!process.env.ADMIN_IDS) missing.push("ADMIN_IDS");
-  if (missing.length > 0) {
-    return res.send(`
-      <html><body style="font-family:monospace;padding:20px;background:#1a1a2e;color:#e0e0e0">
-        <h1>\u{1F916} Moon Crypto Bot</h1>
-        <p style="color:#ff6b6b">\u26A0\uFE0F Variables manquantes : <strong>${missing.join(", ")}</strong></p>
-        <p>Configure ces secrets dans l'onglet <strong>Secrets</strong> de Replit.</p>
-        <hr/>
-        <h3>Variables requises :</h3>
-        <ul>
-          <li><code>BOT_TOKEN</code> \u2014 Token du bot (@BotFather)</li>
-          <li><code>DATABASE_URL</code> \u2014 URL de connexion PostgreSQL (fournie automatiquement par Replit)</li>
-          <li><code>ADMIN_IDS</code> \u2014 Ton ID Telegram (@userinfobot)</li>
-        </ul>
-        <p style="color:#4ecdc4">\u2705 <a href="/api/health" style="color:#4ecdc4">GET /api/health</a></p>
-      </body></html>
-    `);
-  }
-  res.json({ status: "ok", message: "Moon Crypto Bot op\xE9rationnel" });
-});
+var ADMIN_DIST = (0, import_path6.join)(__dirname5, "..", "..", "admin-dashboard", "dist", "public");
+if ((0, import_fs5.existsSync)(ADMIN_DIST)) {
+  app.use(import_express2.default.static(ADMIN_DIST, { index: false }));
+  app.get("*", (req, res) => {
+    if (req.path.startsWith("/api")) return res.status(404).json({ error: "Not found" });
+    res.sendFile((0, import_path6.join)(ADMIN_DIST, "index.html"));
+  });
+  logger_default.info("\u{1F4CA} Tableau de bord admin servi depuis /");
+}
 app.listen(PORT, () => {
   logger_default.info(`\u{1F310} Serveur HTTP d\xE9marr\xE9 sur le port ${PORT}`);
 });
+function selfPing() {
+  const req = (0, import_http4.request)(
+    { hostname: "127.0.0.1", port: PORT, path: "/api/health", method: "GET", timeout: 8e3 },
+    () => {
+    }
+  );
+  req.on("error", () => {
+  });
+  req.end();
+}
+setInterval(selfPing, 4 * 60 * 1e3);
+logger_default.info("\u{1F493} Keep-alive activ\xE9 (ping /api/health toutes les 4 min)");
 async function startBot() {
   const missingVars = [];
   if (!process.env.BOT_TOKEN) missingVars.push("BOT_TOKEN");
@@ -51045,7 +51054,10 @@ async function startBot() {
     const { createBot: createBot2 } = await Promise.resolve().then(() => (init_bot(), bot_exports));
     const bot = createBot2();
     global.moonCryptoBot = bot;
-    bot.launch().catch((err) => {
+    bot.launch({
+      dropPendingUpdates: true,
+      allowedUpdates: ["message", "callback_query", "my_chat_member"]
+    }).catch((err) => {
       logger_default.error(`\u274C Bot polling erreur : ${err.message}`);
     });
     global.botRunning = true;
