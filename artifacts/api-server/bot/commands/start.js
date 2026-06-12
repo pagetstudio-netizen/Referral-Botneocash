@@ -1,5 +1,6 @@
 /**
  * Commande /start — Point d'entrée du bot NeoCash
+ * Inclut le flux de sélection de langue
  */
 import { createReadStream } from 'fs';
 import { join, dirname } from 'path';
@@ -8,11 +9,12 @@ import User from '../models/User.js';
 import Referral from '../models/Referral.js';
 import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting } from '../models/Settings.js';
-import { welcomeMessage, multiChannelVerifyMessage } from '../utils/messages.js';
-import { mainKeyboard, multiChannelVerifyKeyboard } from '../utils/keyboards.js';
+import { welcomeMessage, buildMultiChannelVerifyMessage } from '../utils/messages.js';
+import { getMainKeyboard, multiChannelVerifyKeyboard, languageKeyboard } from '../utils/keyboards.js';
 import { notifyAdmins } from '../utils/notify.js';
 import { creditPendingReferral } from '../utils/creditReferral.js';
 import { isUserAdmin, getMissingChannels } from '../middleware/auth.js';
+import { t, getLang } from '../utils/i18n.js';
 import logger from '../utils/logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,6 +30,19 @@ export async function startCommand(ctx) {
     await processReferral(ctx.dbUser, args, ctx.telegram, ctx.botInfo?.username);
   }
 
+  // ─── Utilisateur sans langue définie → afficher sélecteur de langue ───────────
+  const user = ctx.dbUser;
+  const needsLanguageSelection = !user?.language || user.language === 'fr' && isNewUser;
+
+  if (isNewUser || !user?.language) {
+    return ctx.reply(
+      t('fr', 'language_select_prompt'),
+      { parse_mode: 'Markdown', ...languageKeyboard }
+    );
+  }
+
+  const lang = getLang(ctx);
+
   // ─── Vérification canaux obligatoires avant le message de bienvenue ───────────
   const adminUser = await isUserAdmin(tg.id);
   if (!adminUser) {
@@ -36,9 +51,9 @@ export async function startCommand(ctx) {
       if (channels.length > 0) {
         const missing = await getMissingChannels(ctx.telegram, tg.id, channels);
         if (missing.length > 0) {
-          return ctx.reply(multiChannelVerifyMessage(missing), {
+          return ctx.reply(buildMultiChannelVerifyMessage(missing, lang), {
             parse_mode: 'Markdown',
-            ...multiChannelVerifyKeyboard(missing),
+            ...multiChannelVerifyKeyboard(missing, lang),
           });
         }
       }
@@ -47,23 +62,22 @@ export async function startCommand(ctx) {
     }
   }
 
-  const caption = await welcomeMessage(tg.first_name);
+  const caption = await welcomeMessage(tg.first_name, lang);
+  const keyboard = getMainKeyboard(lang);
 
-  // Envoyer le logo + message de bienvenue en même temps
   try {
     await ctx.replyWithPhoto(
       { source: createReadStream(LOGO_PATH) },
       {
         caption,
         parse_mode: 'Markdown',
-        ...mainKeyboard,
+        ...keyboard,
       }
     );
   } catch {
-    // Fallback texte si le logo est inaccessible
     await ctx.reply(caption, {
       parse_mode: 'Markdown',
-      ...mainKeyboard,
+      ...keyboard,
     });
   }
 
@@ -81,11 +95,74 @@ export async function startCommand(ctx) {
   }
 }
 
+/**
+ * Gérer la sélection de langue et envoyer le message de bienvenue
+ */
+export async function handleLanguageSet(ctx, lang) {
+  await ctx.answerCbQuery().catch(() => {});
+
+  const user = ctx.dbUser;
+  if (!user) return;
+
+  user.language = lang;
+  await user.save();
+  ctx.userLang = lang;
+
+  const tg = ctx.from;
+  const args = ctx.payload || '';
+
+  // ─── Vérification canaux obligatoires ─────────────────────────────────────────
+  const adminUser = await isUserAdmin(tg.id);
+  if (!adminUser) {
+    try {
+      const channels = await RequiredChannel.findAll();
+      if (channels.length > 0) {
+        const missing = await getMissingChannels(ctx.telegram, tg.id, channels);
+        if (missing.length > 0) {
+          await ctx.editMessageText(buildMultiChannelVerifyMessage(missing, lang), {
+            parse_mode: 'Markdown',
+            ...multiChannelVerifyKeyboard(missing, lang),
+          }).catch(async () => {
+            await ctx.reply(buildMultiChannelVerifyMessage(missing, lang), {
+              parse_mode: 'Markdown',
+              ...multiChannelVerifyKeyboard(missing, lang),
+            });
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      logger.warn('handleLanguageSet channel check error', { err: err.message });
+    }
+  }
+
+  const caption = await welcomeMessage(tg.first_name, lang);
+  const keyboard = getMainKeyboard(lang);
+
+  try {
+    await ctx.editMessageText(caption, { parse_mode: 'Markdown' }).catch(() => {});
+    await ctx.reply(caption, { parse_mode: 'Markdown', ...keyboard });
+  } catch {
+    await ctx.reply(caption, { parse_mode: 'Markdown', ...keyboard });
+  }
+
+  // Notification admin
+  await notifyAdmins(ctx.telegram, {
+    type: 'new_user',
+    text:
+      `🆕 *NOUVEAU UTILISATEUR*\n\n` +
+      `👤 ${tg.first_name} ${tg.last_name || ''}\n` +
+      `🆔 \`${tg.id}\`\n` +
+      `📛 ${tg.username ? '@' + tg.username : 'N/A'}\n` +
+      `🌐 Langue : ${lang}\n` +
+      `👥 Parrainé : ${args ? '✅ Oui' : '❌ Non'}`,
+  }).catch(() => {});
+}
+
 async function processReferral(newUser, referralCodeOrId, telegram, botUsername) {
   try {
     if (newUser.referredBy) return;
 
-    // Trouver le parrain via code ou ID Telegram
     let referrer = await User.findOne({ referralCode: referralCodeOrId });
     if (!referrer) {
       const refId = Number(referralCodeOrId);
@@ -95,17 +172,14 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
     }
     if (!referrer || referrer.telegramId === newUser.telegramId) return;
 
-    // Un filleul ne peut être parrainé qu'une seule fois
     const existing = await Referral.findOne({ referredId: newUser.telegramId });
     if (existing) return;
 
     const bonus = await getSetting('referral_bonus') || 120;
 
-    // Marquer le filleul comme parrainé
     newUser.referredBy = referrer.telegramId;
     await newUser.save();
 
-    // Créer le parrainage en attente (pending) — validé après vérification canal
     const referral = await Referral.create({
       referrerId: referrer.telegramId,
       referredId: newUser.telegramId,
@@ -121,15 +195,13 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
       bonus,
     });
 
-    // ─── Notification immédiate au parrain (lien cliqué) ─────────────────────
     if (telegram && referral) {
       try {
+        const refLang = referrer.language || 'fr';
+        const { t: translate } = await import('../utils/i18n.js');
         await telegram.sendMessage(
           referrer.telegramId,
-          `🔔 *Quelqu'un a cliqué sur ton lien !*\n\n` +
-          `👤 *${newUser.firstName}* vient d'utiliser ton lien de parrainage.\n\n` +
-          `⏳ En attente de vérification des canaux...\n` +
-          `💰 Tu gagneras *${bonus} FCFA* dès que la vérification sera validée.`,
+          translate(refLang, 'referral_pending_notif', newUser.firstName, bonus),
           { parse_mode: 'Markdown' }
         );
       } catch (notifErr) {
@@ -137,23 +209,18 @@ async function processReferral(newUser, referralCodeOrId, telegram, botUsername)
       }
     }
 
-    // Vérifier si des canaux obligatoires sont configurés
     const channels = await RequiredChannel.findAll();
 
     if (!channels.length) {
-      // Aucun canal → créditer immédiatement
       await creditPendingReferral(newUser, telegram, botUsername);
       return;
     }
 
-    // Canaux configurés : vérifier si le filleul est déjà membre de tous
     try {
       const missing = await getMissingChannels(telegram, newUser.telegramId, channels);
       if (missing.length === 0) {
-        // Déjà membre de tout → créditer maintenant
         await creditPendingReferral(newUser, telegram, botUsername);
       }
-      // Sinon → sera crédité quand il cliquera sur ✅ Vérifier
     } catch {
       // Erreur API → laisser en pending
     }

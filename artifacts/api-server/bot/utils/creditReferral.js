@@ -1,11 +1,10 @@
 /**
  * Utilitaire — Crédit du parrainage après vérification canaux
- * Appelé depuis start.js (si tous les canaux OK ou aucun canal)
- * et depuis bot.js (callback verify_channel).
  */
 import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
+import { t } from './i18n.js';
 import logger from './logger.js';
 
 export async function creditPendingReferral(filleul, telegram, botUsername) {
@@ -33,7 +32,7 @@ export async function creditPendingReferral(filleul, telegram, botUsername) {
       amount: bonus,
       balanceBefore: balBefore,
       balanceAfter: referrer.balance,
-      description: `Parrainage de ${filleul.firstName} (canaux vérifiés)`,
+      description: `Referral from ${filleul.firstName}`,
     });
 
     referral.status = 'credited';
@@ -48,26 +47,27 @@ export async function creditPendingReferral(filleul, telegram, botUsername) {
 
     if (telegram) {
       try {
+        const refLang = referrer.language || 'fr';
         const referralLink = botUsername
           ? `https://t.me/${botUsername}?start=${referrer.referralCode || referrer.telegramId}`
           : null;
         const shareUrl = referralLink
-          ? `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('🤑 Rejoins NeoCash et gagne de l\'argent gratuitement !')}`
+          ? `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(t(refLang, 'referral_share_text'))}`
           : null;
 
-        const notifText =
-          `🎉 *Félicitations ${referrer.firstName} !*\n\n` +
-          `💸 Tu viens de gagner *${bonus} FCFA* !\n\n` +
-          `👤 *${filleul.firstName}* vient de rejoindre NeoCash grâce à ton lien.\n\n` +
-          `━━━━━━━━━━━━━━━━━━\n` +
-          `💰 Bonus crédité : *+${bonus} FCFA*\n` +
-          `👥 Total filleuls validés : *${referrer.referralCount}*\n` +
-          `💳 Nouveau solde : *${referrer.balance.toLocaleString('fr-FR')} FCFA*\n` +
-          `━━━━━━━━━━━━━━━━━━\n\n` +
-          `📲 Partage encore ton lien pour gagner plus !`;
+        const notifText = t(
+          refLang,
+          'referral_credited_notif',
+          referrer.firstName,
+          filleul.firstName,
+          bonus,
+          referrer.referralCount,
+          referrer.balance.toLocaleString('fr-FR'),
+          shareUrl,
+        );
 
         const buttons = shareUrl
-          ? { inline_keyboard: [[{ text: '📤 Partager encore', url: shareUrl }]] }
+          ? { inline_keyboard: [[{ text: t(refLang, 'referral_share_again_btn'), url: shareUrl }]] }
           : undefined;
 
         await telegram.sendMessage(referrer.telegramId, notifText, {

@@ -1,0 +1,50 @@
+Salut Replit,
+
+Je veux modifier complètement mon bot. Il ne doit plus fonctionner en FCFA, mais devenir une plateforme permettant aux utilisateurs de gagner et retirer de l'argent en cryptomonnaies.
+
+Nouveau système de récompenses
+
+- Bonus de connexion : 0,5 USDT.
+- Bonus de parrainage : 1,5 USDT par filleul valide.
+
+Retrait
+
+- Le montant minimum de retrait est de 15 USDT.
+- Lorsqu'un utilisateur clique sur Retrait, le bot ne doit pas afficher à l'avance les conditions de retrait.
+- Si l'utilisateur remplit sa demande de retrait, le système doit alors vérifier automatiquement les conditions d'éligibilité.
+- Si les conditions ne sont pas remplies, le bot doit afficher le message approprié à ce moment-là.
+
+Choix de la cryptomonnaie
+
+Supprimer complètement le choix du pays. À la place, lorsque l'utilisateur clique sur Retrait (ou l'équivalent dans sa langue), il doit choisir la cryptomonnaie dans laquelle il souhaite recevoir son paiement, par exemple :
+
+- USDT
+- BNB
+- BTC
+- ETH
+- et d'autres cryptomonnaies que l'administrateur pourra ajouter.
+
+Conversion automatique
+
+Le solde du compte est conservé en USDT.
+
+Si l'utilisateur choisit une autre cryptomonnaie, le bot doit afficher automatiquement une conversion basée sur la valeur réelle du marché au moment de la demande.
+
+Exemple :
+
+«Vous allez retirer 12 USDT.
+Selon le taux actuel du marché, vous recevrez environ 0,0XXXX BNB.
+Voulez-vous confirmer ce retrait ?»
+
+Le taux de conversion doit toujours être calculé à partir du cours réel et actuel du marché, et non avec une valeur fixe.
+
+Informations de retrait
+
+Avant de confirmer le retrait, le bot doit demander :
+
+- l'adresse du portefeuille (wallet address) ;
+- le réseau correspondant à la cryptomonnaie choisie (par exemple : BEP20, ERC20, TRC20, etc., selon les réseaux disponibles).
+
+Compatibilité
+
+Toutes ces modifications doivent être intégrées proprement sans casser les autres fonctionnalités du bot, et toutes les interfaces et messages doivent continuer à s'afficher dans la langue choisie par chaque utilisateur.

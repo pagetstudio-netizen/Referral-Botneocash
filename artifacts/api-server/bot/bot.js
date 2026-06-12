@@ -1,11 +1,12 @@
 /**
  * Configuration principale du bot NeoCash — Telegraf
+ * Système multilingue : FR / EN / DE / ZH
  */
 import { Telegraf } from 'telegraf';
 import { antiSpam } from './middleware/antispam.js';
 import { getOrCreateUser, checkBanned, checkChannelMembership, checkMaintenance, isUserAdmin, clearMembershipCache } from './middleware/auth.js';
 import { requireAdmin } from './middleware/admin.js';
-import { startCommand } from './commands/start.js';
+import { startCommand, handleLanguageSet } from './commands/start.js';
 import {
   adminCommand,
   handleAdminStats,
@@ -44,10 +45,24 @@ import {
   adminApproveWithdrawal,
   adminRejectWithdrawal,
 } from './handlers/withdrawal.js';
-import { mainKeyboard } from './utils/keyboards.js';
+import { getMainKeyboard, languageKeyboard, multiChannelVerifyKeyboard } from './utils/keyboards.js';
 import { getSetting } from './models/Settings.js';
 import { creditPendingReferral } from './utils/creditReferral.js';
+import { buildMultiChannelVerifyMessage } from './utils/messages.js';
+import { t, getLang, BUTTON_LABELS, LANGUAGE_NAMES } from './utils/i18n.js';
+import { notifyUser } from './utils/notify.js';
 import logger from './utils/logger.js';
+
+// ─── Tous les labels de boutons dans toutes les langues ───────────────────────
+const ALL_BUTTON_LABELS = {
+  balance: Object.values(BUTTON_LABELS.balance),
+  bonus: Object.values(BUTTON_LABELS.bonus),
+  referral: Object.values(BUTTON_LABELS.referral),
+  withdrawal: Object.values(BUTTON_LABELS.withdrawal),
+  support: Object.values(BUTTON_LABELS.support),
+  explanation: Object.values(BUTTON_LABELS.explanation),
+  changeLanguage: Object.values(BUTTON_LABELS.changeLanguage),
+};
 
 export function createBot() {
   const token = process.env.BOT_TOKEN;
@@ -72,27 +87,57 @@ export function createBot() {
 
   bot.command('admin', requireAdmin, adminCommand);
 
-  bot.command('menu', (ctx) =>
-    ctx.reply('📱 *Menu Principal*', { parse_mode: 'Markdown', ...mainKeyboard })
-  );
+  bot.command('menu', (ctx) => {
+    const lang = getLang(ctx);
+    return ctx.reply(t(lang, 'menu_title'), { parse_mode: 'Markdown', ...getMainKeyboard(lang) });
+  });
+
+  bot.command('langue', async (ctx) => {
+    const lang = getLang(ctx);
+    await ctx.reply(t('fr', 'language_select_prompt'), {
+      parse_mode: 'Markdown',
+      ...languageKeyboard,
+    });
+  });
+  bot.command('language', async (ctx) => {
+    await ctx.reply(t('fr', 'language_select_prompt'), {
+      parse_mode: 'Markdown',
+      ...languageKeyboard,
+    });
+  });
 
   bot.command('solde', checkChannelMembership, handleBalance);
   bot.command('bonus', checkChannelMembership, handleBonus);
   bot.command('parrainage', checkChannelMembership, handleReferral);
   bot.command('retrait', checkChannelMembership, handleWithdrawal);
 
-  // ─── Clavier persistant ─────────────────────────────────────────────────────
-  bot.hears('💰 Solde', checkChannelMembership, handleBalance);
-  bot.hears('🎁 Bonus Quotidien', checkChannelMembership, handleBonus);
-  bot.hears('👥 Parrainage', checkChannelMembership, handleReferral);
-  bot.hears('💸 Retrait', checkChannelMembership, handleWithdrawal);
-  bot.hears('📞 Support', checkChannelMembership, handleSupport);
-  bot.hears('📖 Explication', handleExplanation);
+  // ─── Sélection de langue ─────────────────────────────────────────────────────
+  bot.action('set_lang_fr', async (ctx) => await handleLanguageSet(ctx, 'fr'));
+  bot.action('set_lang_en', async (ctx) => await handleLanguageSet(ctx, 'en'));
+  bot.action('set_lang_de', async (ctx) => await handleLanguageSet(ctx, 'de'));
+  bot.action('set_lang_zh', async (ctx) => await handleLanguageSet(ctx, 'zh'));
 
-  // ─── Callbacks inline ────────────────────────────────────────────────────────
+  // ─── Clavier persistant — toutes les langues ─────────────────────────────────
+  bot.hears(ALL_BUTTON_LABELS.balance, checkChannelMembership, handleBalance);
+  bot.hears(ALL_BUTTON_LABELS.bonus, checkChannelMembership, handleBonus);
+  bot.hears(ALL_BUTTON_LABELS.referral, checkChannelMembership, handleReferral);
+  bot.hears(ALL_BUTTON_LABELS.withdrawal, checkChannelMembership, handleWithdrawal);
+  bot.hears(ALL_BUTTON_LABELS.support, checkChannelMembership, handleSupport);
+  bot.hears(ALL_BUTTON_LABELS.explanation, handleExplanation);
+
+  // ─── Changement de langue depuis le menu ─────────────────────────────────────
+  bot.hears(ALL_BUTTON_LABELS.changeLanguage, async (ctx) => {
+    await ctx.reply(t('fr', 'language_select_prompt'), {
+      parse_mode: 'Markdown',
+      ...languageKeyboard,
+    });
+  });
+
+  // ─── Callbacks inline — vérification canal ────────────────────────────────────
   bot.action('verify_channel', async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
+    const lang = getLang(ctx);
 
     try {
       const { default: RequiredChannel } = await import('./models/RequiredChannel.js');
@@ -104,59 +149,51 @@ export function createBot() {
         ctx.dbUser.isVerified = true;
         await ctx.dbUser.save();
         clearMembershipCache(userId);
-        await ctx.editMessageText('✅ Vérification réussie ! Bienvenue !').catch(() => {});
+        await ctx.editMessageText('✅ ' + (lang === 'en' ? 'Access granted!' : lang === 'de' ? 'Zugang gewährt!' : lang === 'zh' ? '访问权限已授予！' : 'Vérification réussie !')).catch(() => {});
         await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
-        return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash !', {
-          parse_mode: 'Markdown', ...mainKeyboard,
+        return ctx.reply(t(lang, 'channel_access_granted'), {
+          parse_mode: 'Markdown', ...getMainKeyboard(lang),
         });
       }
 
-      // Utiliser getMissingChannels — même logique que checkChannelMembership
       const stillMissing = await getMissingChannels(ctx.telegram, userId, channels);
 
       if (stillMissing.length > 0) {
         const names = stillMissing.map(ch => ch.label || ch.chatIdOrUrl).join(', ');
         await ctx.answerCbQuery(
-          `❌ Rejoins d'abord : ${names}`,
+          t(lang, 'channel_still_missing', names),
           { show_alert: true }
         ).catch(() => {});
-        // Rafraîchir le message avec les canaux encore manquants
-        const { multiChannelVerifyMessage } = await import('./utils/messages.js');
-        const { multiChannelVerifyKeyboard } = await import('./utils/keyboards.js');
-        await ctx.editMessageText(multiChannelVerifyMessage(stillMissing), {
+        await ctx.editMessageText(buildMultiChannelVerifyMessage(stillMissing, lang), {
           parse_mode: 'Markdown',
-          ...multiChannelVerifyKeyboard(stillMissing),
+          ...multiChannelVerifyKeyboard(stillMissing, lang),
         }).catch(() => {});
         return;
       }
 
-      // Tout bon → accès accordé
       ctx.dbUser.isVerified = true;
       await ctx.dbUser.save();
       clearMembershipCache(userId);
-      await ctx.editMessageText('✅ Accès accordé ! Bienvenue !').catch(() => {});
+      await ctx.editMessageText('✅ ' + (lang === 'en' ? 'Access granted!' : lang === 'de' ? 'Zugang gewährt!' : lang === 'zh' ? '访问权限已授予！' : 'Accès accordé !')).catch(() => {});
       await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
-      logger.info('verify_channel: accès accordé et parrainage crédité', { userId });
-      return ctx.reply('🎉 *Accès accordé !*\n\nBienvenue sur NeoCash. Utilise le menu ci-dessous.', {
-        parse_mode: 'Markdown', ...mainKeyboard,
+      logger.info('verify_channel: accès accordé', { userId });
+      return ctx.reply(t(lang, 'channel_access_granted'), {
+        parse_mode: 'Markdown', ...getMainKeyboard(lang),
       });
 
     } catch (err) {
       logger.error('verify_channel error', { err: err.message });
-      return ctx.answerCbQuery('⚠️ Vérification impossible. Réessaie.', { show_alert: true });
+      return ctx.answerCbQuery('⚠️ ' + (lang === 'en' ? 'Verification failed. Try again.' : 'Vérification impossible. Réessaie.'), { show_alert: true });
     }
   });
 
   // ─── Callbacks retrait ───────────────────────────────────────────────────────
   bot.action(/^country_(.+)$/, checkChannelMembership, async (ctx) => {
-    const countryCode = ctx.match[1];
-    await handleCountrySelect(ctx, countryCode);
+    await handleCountrySelect(ctx, ctx.match[1]);
   });
 
   bot.action(/^operator_([^_]+)_(.+)$/, checkChannelMembership, async (ctx) => {
-    const countryCode = ctx.match[1];
-    const operator = ctx.match[2];
-    await handleOperatorSelect(ctx, countryCode, operator);
+    await handleOperatorSelect(ctx, ctx.match[1], ctx.match[2]);
   });
 
   bot.action('back_to_countries', handleBackToCountries);
@@ -254,16 +291,7 @@ export function createBot() {
     await ctx.answerCbQuery();
     setAdminSession(ctx.from.id, { action: 'set_support_message' });
     await ctx.reply(
-      `✏️ *MESSAGE SUPPORT PERSONNALISÉ*\n\n` +
-      `Écris le texte qui s'affichera dans la section 📞 Support.\n\n` +
-      `💡 Tu peux mentionner :\n` +
-      `• Les types de problèmes traités\n` +
-      `• La disponibilité des publicités\n` +
-      `• Les partenariats possibles\n` +
-      `• Les horaires de support\n` +
-      `• Tout autre information utile\n\n` +
-      `_Le formatage Markdown est supporté (*gras*, _italique_, etc.)_\n\n` +
-      `📄 Pour revenir au texte par défaut, envoie : \`reset\``,
+      `✏️ *MESSAGE SUPPORT PERSONNALISÉ*\n\nÉcris le texte qui s'affichera dans la section 📞 Support.\n\n💡 Tu peux mentionner :\n• Les types de problèmes traités\n• La disponibilité des publicités\n• Les partenariats possibles\n• Les horaires de support\n• Tout autre information utile\n\n_Le formatage Markdown est supporté_\n\n📄 Pour revenir au texte par défaut, envoie : \`reset\``,
       { parse_mode: 'Markdown' }
     );
   });
@@ -272,7 +300,7 @@ export function createBot() {
     await ctx.answerCbQuery();
     setAdminSession(ctx.from.id, { action: 'set_withdrawal_channel' });
     await ctx.reply(
-      `💸 *CANAL DE RETRAIT*\n\nEntre le username ou l'ID du canal où publier les notifications de retrait.\n\nExemples :\n• \`@mon_canal_retrait\`\n• \`-1001234567890\`\n\n⚠️ Le bot doit être *administrateur* du canal.`,
+      `💸 *CANAL DE RETRAIT*\n\nEntre le username ou l'ID du canal.\n\nExemples :\n• \`@mon_canal_retrait\`\n• \`-1001234567890\`\n\n⚠️ Le bot doit être *administrateur* du canal.`,
       { parse_mode: 'Markdown' }
     );
   });
@@ -314,6 +342,7 @@ export function createBot() {
   // ─── Traitement messages texte ────────────────────────────────────────────────
   bot.on('text', async (ctx) => {
     const userId = ctx.from.id;
+    const lang = getLang(ctx);
     const isAdmin = await isUserAdmin(userId);
 
     // Admin input (broadcast, search, credit, etc.)
@@ -334,7 +363,12 @@ export function createBot() {
     if (isAdmin) {
       const session = getAdminSession(userId);
       if (session?.action === 'support_reply') {
-        await notifyUser(ctx.telegram, session.targetId, `📩 *RÉPONSE DU SUPPORT*\n\n${ctx.message.text}`);
+        // Récupérer la langue de l'utilisateur cible
+        const User = (await import('./models/User.js')).default;
+        const targetUser = await User.findOne({ telegramId: session.targetId }).catch(() => null);
+        const targetLang = targetUser?.language || 'fr';
+        const replyPrefix = t(targetLang, 'support_admin_reply');
+        await notifyUser(ctx.telegram, session.targetId, `${replyPrefix}${ctx.message.text}`);
         await ctx.reply(`✅ Réponse envoyée à \`${session.targetId}\``, { parse_mode: 'Markdown' });
         deleteAdminSession(userId);
         return;
@@ -366,7 +400,7 @@ export function createBot() {
     }
 
     // Message par défaut
-    await ctx.reply('💬 Utilise les boutons du menu ci-dessous.', mainKeyboard);
+    await ctx.reply(t(lang, 'use_menu'), getMainKeyboard(lang));
   });
 
   // ─── Traitement photos (broadcast admin) ──────────────────────────────────────
@@ -390,7 +424,6 @@ export function createBot() {
     const newStatus = update.new_chat_member?.status;
     const chat = update.chat;
 
-    // Bot ajouté ou promu admin dans un groupe/canal/supergroupe
     if (!['member', 'administrator'].includes(newStatus)) return;
     if (!['group', 'supergroup', 'channel'].includes(chat.type)) return;
 
@@ -421,7 +454,8 @@ export function createBot() {
   // ─── Gestion erreurs ─────────────────────────────────────────────────────────
   bot.catch((err, ctx) => {
     logger.error('Bot error', { err: err.message, update: ctx.update });
-    ctx.reply('❌ Une erreur inattendue est survenue. Réessaie plus tard.').catch(() => {});
+    const lang = getLang(ctx);
+    ctx.reply(t(lang, 'error_generic')).catch(() => {});
   });
 
   return bot;

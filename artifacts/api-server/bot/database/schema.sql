@@ -55,6 +55,9 @@ ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS beneficiary_name TEXT NOT NULL 
 -- Anti-triche : déblocage retrait par admin
 ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_unlocked BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Langue préférée de l'utilisateur
+ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'fr';
+
 CREATE TABLE IF NOT EXISTS referrals (
   id BIGSERIAL PRIMARY KEY,
   referrer_id BIGINT NOT NULL,

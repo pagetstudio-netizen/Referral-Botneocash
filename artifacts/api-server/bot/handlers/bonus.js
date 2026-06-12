@@ -4,15 +4,18 @@
 import Transaction from '../models/Transaction.js';
 import { getSetting } from '../models/Settings.js';
 import { bonusClaimedMessage, bonusAlreadyClaimedMessage } from '../utils/messages.js';
+import { getLang, t } from '../utils/i18n.js';
 import logger from '../utils/logger.js';
 
 export async function handleBonus(ctx) {
   const user = ctx.dbUser;
-  if (!user) return ctx.reply('❌ Utilisateur non trouvé.');
+  const lang = getLang(ctx);
+
+  if (!user) return ctx.reply(t(lang, 'user_not_found'));
 
   if (!user.canClaimBonus()) {
     const timeLeft = user.timeUntilNextBonus();
-    return ctx.reply(bonusAlreadyClaimedMessage(timeLeft), { parse_mode: 'Markdown' });
+    return ctx.reply(bonusAlreadyClaimedMessage(timeLeft, lang), { parse_mode: 'Markdown' });
   }
 
   try {
@@ -30,13 +33,13 @@ export async function handleBonus(ctx) {
       amount: bonusAmount,
       balanceBefore: balBefore,
       balanceAfter: user.balance,
-      description: 'Bonus quotidien',
+      description: 'Daily bonus',
     });
 
     logger.info('Daily bonus claimed', { userId: user.telegramId, amount: bonusAmount });
-    await ctx.reply(bonusClaimedMessage(bonusAmount, user.balance), { parse_mode: 'Markdown' });
+    await ctx.reply(bonusClaimedMessage(bonusAmount, user.balance, lang), { parse_mode: 'Markdown' });
   } catch (err) {
     logger.error('handleBonus error', { err: err.message });
-    await ctx.reply('❌ Une erreur est survenue. Réessaie plus tard.');
+    await ctx.reply(t(lang, 'error_generic'));
   }
 }

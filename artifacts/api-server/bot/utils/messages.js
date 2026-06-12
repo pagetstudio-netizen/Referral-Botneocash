@@ -1,7 +1,8 @@
 /**
- * Templates de messages pour NeoCash
+ * Templates de messages pour NeoCash — avec support multilingue
  */
 import { getSetting } from '../models/Settings.js';
+import { t } from './i18n.js';
 
 // ─── Échappement Markdown Telegram ────────────────────────────────────────────
 export function escapeMarkdown(text) {
@@ -31,166 +32,133 @@ export function formatDuration(ms) {
 }
 
 // ─── Message de bienvenue ─────────────────────────────────────────────────────
-export async function welcomeMessage(firstName) {
+export async function welcomeMessage(firstName, lang = 'fr') {
   const dailyBonus  = await getSetting('daily_bonus')    || 100;
   const referralBonus = await getSetting('referral_bonus') || 120;
-  const channel     = await getSetting('required_channel') || '';
   const minWithdraw = await getSetting('min_withdraw')   || 800;
 
-  const channelLine = channel
-    ? `\n\n📢 *Pour commencer, rejoins notre canal officiel :*\n👉 ${channel}`
-    : '';
-
-  return `👋 *Bonjour ${firstName}, bienvenue chez NeoCash !* 🎉
-
-━━━━━━━━━━━━━━━━━━
-💸 *Tu peux gagner de l'argent réellement* en partageant simplement ton lien de parrainage avec tes amis et ta famille !
-
-🔥 *Comment gagner :*
-👥 *+${referralBonus} FCFA* par ami invité via ton lien
-🎁 *+${dailyBonus} FCFA* bonus gratuit chaque jour
-
-💳 *Retraits disponibles via :*
-Moov Money • MTN MoMo • Orange Money
-Wave • TMoney • Airtel Money • Free Money
-
-💰 Retrait à partir de *${formatAmount(minWithdraw)}* seulement
-━━━━━━━━━━━━━━━━━━${channelLine}
-
-🚀 *C'est gratuit, sans dépôt — commence maintenant !*`;
+  return t(lang, 'welcome', firstName, referralBonus, dailyBonus, formatAmount(minWithdraw));
 }
 
 // ─── Message solde ─────────────────────────────────────────────────────────────
-export function balanceMessage(user) {
-  return `💰 *TON SOLDE*
-
-━━━━━━━━━━━━━━━━━━
-💵 Solde actuel : *${formatAmount(user.balance)}*
-👥 Gains parrainage : *${formatAmount(user.referralEarnings)}*
-🎁 Bonus reçus : *${formatAmount(user.bonusEarnings)}*
-💳 Total retiré : *${formatAmount(user.totalWithdrawn)}*
-━━━━━━━━━━━━━━━━━━
-
-📊 Filleuls actifs : *${user.referralCount}*`;
+export function balanceMessage(user, lang = 'fr') {
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'balance_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'balance_current', formatAmount(user.balance)) + '\n' +
+    t(lang, 'balance_referral_earnings', formatAmount(user.referralEarnings)) + '\n' +
+    t(lang, 'balance_bonus_earnings', formatAmount(user.bonusEarnings)) + '\n' +
+    t(lang, 'balance_withdrawn', formatAmount(user.totalWithdrawn)) + '\n' +
+    SEP + '\n\n' +
+    t(lang, 'balance_referrals', user.referralCount)
+  );
 }
 
 // ─── Message parrainage ────────────────────────────────────────────────────────
-export function referralMessage(user, botUsername) {
+export function referralMessage(user, botUsername, lang = 'fr') {
   const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
-  return `👥 *TON LIEN D'AFFILIATION*
-
-━━━━━━━━━━━━━━━━━━
-🔗 Lien unique :
-\`${referralLink}\`
-
-📊 Parrainages validés : *${user.referralCount}*
-💰 Gain par parrainage : *${formatAmount(user.referralEarnings)}*
-━━━━━━━━━━━━━━━━━━
-
-📢 *Partage ton lien et gagne 120 FCFA par ami invité !*`;
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'referral_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'referral_link_label') + '\n' +
+    `\`${referralLink}\`\n\n` +
+    t(lang, 'referral_validated', user.referralCount) + '\n' +
+    t(lang, 'referral_earnings_label', formatAmount(user.referralEarnings)) + '\n' +
+    SEP + '\n\n' +
+    t(lang, 'referral_cta', user.referralEarnings || 120)
+  );
 }
 
 // ─── Message bonus quotidien ───────────────────────────────────────────────────
-export function bonusClaimedMessage(amount, newBalance) {
-  return `🎁 *BONUS QUOTIDIEN REÇU !*
-
-━━━━━━━━━━━━━━━━━━
-✅ Montant : +*${formatAmount(amount)}*
-💰 Nouveau solde : *${formatAmount(newBalance)}*
-━━━━━━━━━━━━━━━━━━
-
-Reviens demain pour ton prochain bonus ! 🔥`;
+export function bonusClaimedMessage(amount, newBalance, lang = 'fr') {
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'bonus_claimed_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'bonus_amount', formatAmount(amount)) + '\n' +
+    t(lang, 'bonus_new_balance', formatAmount(newBalance)) + '\n' +
+    SEP + '\n\n' +
+    t(lang, 'bonus_comeback')
+  );
 }
 
-export function bonusAlreadyClaimedMessage(timeLeft) {
-  return `⏰ *BONUS DÉJÀ RÉCLAMÉ*
-
-━━━━━━━━━━━━━━━━━━
-Tu as déjà réclamé ton bonus aujourd'hui.
-
-⏳ Prochain bonus dans : *${formatDuration(timeLeft)}*
-━━━━━━━━━━━━━━━━━━
-
-💡 En attendant, invite tes amis pour gagner plus !`;
+export function bonusAlreadyClaimedMessage(timeLeft, lang = 'fr') {
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'bonus_already_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'bonus_already_text') + '\n\n' +
+    t(lang, 'bonus_next_in', formatDuration(timeLeft)) + '\n' +
+    SEP + '\n\n' +
+    t(lang, 'bonus_wait_tip')
+  );
 }
 
 // ─── Récapitulatif retrait ─────────────────────────────────────────────────────
-export function withdrawSummaryMessage(data) {
-  return `📄 *RÉCAPITULATIF DU RETRAIT*
-
-━━━━━━━━━━━━━━━━━━
-🌍 Pays : *${data.countryName}*
-📱 Opérateur : *${data.operator}*
-👤 Bénéficiaire : *${data.beneficiaryName}*
-💰 Montant : *${formatAmount(data.amount)}*
-📞 Numéro : \`${data.phone}\`
-━━━━━━━━━━━━━━━━━━
-
-Confirmer le retrait ?`;
+export function withdrawSummaryMessage(data, lang = 'fr') {
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'withdrawal_summary_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'withdrawal_summary_country', data.countryName) + '\n' +
+    t(lang, 'withdrawal_summary_operator', data.operator) + '\n' +
+    t(lang, 'withdrawal_summary_beneficiary', data.beneficiaryName) + '\n' +
+    t(lang, 'withdrawal_summary_amount', formatAmount(data.amount)) + '\n' +
+    t(lang, 'withdrawal_summary_phone', data.phone) + '\n' +
+    SEP + '\n\n' +
+    t(lang, 'withdrawal_confirm_question')
+  );
 }
 
 // ─── Message explication ───────────────────────────────────────────────────────
-export async function explanationMessage() {
+export async function explanationMessage(lang = 'fr') {
   const dailyBonus = await getSetting('daily_bonus') || 100;
   const referralBonus = await getSetting('referral_bonus') || 120;
   const minWithdraw = await getSetting('min_withdraw') || 800;
-  return `📖 *COMMENT ÇA MARCHE ?*
-
-━━━━━━━━━━━━━━━━━━
-👥 *${referralBonus} FCFA* par parrainage confirmé
-🎁 *${dailyBonus} FCFA* bonus quotidien
-💳 Retrait minimum : *${formatAmount(minWithdraw)}*
-━━━━━━━━━━━━━━━━━━
-
-*ÉTAPES SIMPLES :*
-
-1️⃣ *Rejoins* la communauté NeoCash
-2️⃣ *Invite* tes amis avec ton lien unique
-3️⃣ *Réclame* ton bonus quotidien chaque jour
-4️⃣ *Retire* ton argent dès 800 FCFA
-
-💳 *Méthodes de retrait disponibles :*
-MTN • Moov • Orange Money • TMoney • Wave • Airtel Money • Flooz • Free Money • Wave • Coris Money
-
-━━━━━━━━━━━━━━━━━━
-⚡ *Pas de dépôt requis — 100% gratuit !*`;
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'explanation_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'explanation_referral', referralBonus) + '\n' +
+    t(lang, 'explanation_bonus', dailyBonus) + '\n' +
+    t(lang, 'explanation_min_withdraw', formatAmount(minWithdraw)) + '\n' +
+    SEP + '\n\n' +
+    t(lang, 'explanation_steps_title') + '\n\n' +
+    t(lang, 'explanation_step1') + '\n' +
+    t(lang, 'explanation_step2') + '\n' +
+    t(lang, 'explanation_step3') + '\n' +
+    t(lang, 'explanation_step4', formatAmount(minWithdraw)) + '\n\n' +
+    t(lang, 'explanation_methods_title') + '\n' +
+    t(lang, 'explanation_methods') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'explanation_free')
+  );
 }
 
-// ─── Message vérification canal ────────────────────────────────────────────────
-export function channelVerifyMessage() {
-  return `🔒 *VÉRIFICATION REQUISE*
-
-━━━━━━━━━━━━━━━━━━
-Pour accéder au bot, tu dois rejoindre notre communauté officielle.
-
-1️⃣ Clique sur *📢 Rejoindre*
-2️⃣ Rejoins le canal/groupe
-3️⃣ Clique sur *✅ Vérifier*
-━━━━━━━━━━━━━━━━━━
-
-⚠️ Si tu quittes le canal, l'accès sera bloqué.`;}
-
 // ─── Message vérification multi-canaux ─────────────────────────────────────────
-export function multiChannelVerifyMessage(channels) {
+export function buildMultiChannelVerifyMessage(channels, lang = 'fr') {
   const lines = channels.map((ch, i) => {
     const icon = ch.type === 'website' ? '🌐' : ch.type === 'group' ? '👥' : '📢';
     const label = ch.label || ch.chatIdOrUrl;
     return `${i + 1}️⃣ ${icon} *${label}*`;
   });
 
-  return `🔒 *ACCÈS REQUIS*
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'channel_verify_title') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'channel_verify_text', channels.length) + '\n\n' +
+    lines.join('\n') + '\n\n' +
+    SEP + '\n' +
+    t(lang, 'channel_verify_steps', channels.length)
+  );
+}
 
-━━━━━━━━━━━━━━━━━━
-Pour utiliser le bot, rejoins ${channels.length > 1 ? 'tous ces canaux' : 'ce canal'} :
-
-${lines.join('\n')}
-
-━━━━━━━━━━━━━━━━━━
-1️⃣ Clique sur chaque bouton ci-dessous
-2️⃣ Rejoins ${channels.length > 1 ? 'chaque canal' : 'le canal'}
-3️⃣ Clique sur ✅ *Vérifier mon accès*
-
-⚠️ L'accès est retiré si tu quittes l'un des canaux.`;
+// ─── Alias pour compatibilité backward ────────────────────────────────────────
+export function multiChannelVerifyMessage(channels) {
+  return buildMultiChannelVerifyMessage(channels, 'fr');
 }
 
 // ─── Message notification admin ────────────────────────────────────────────────
@@ -201,6 +169,7 @@ export function adminNewUserNotif(user) {
 🆔 ID : \`${user.telegramId}\`
 📛 Username : ${user.username ? '@' + escapeMarkdown(user.username) : 'N/A'}
 👥 Parrainé par : ${user.referredBy ? `\`${user.referredBy}\`` : 'Direct'}
+🌐 Langue : ${user.language || 'fr'}
 📅 ${formatDate(new Date())}`;
 }
 

@@ -5,7 +5,8 @@ import User from '../models/User.js';
 import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting } from '../models/Settings.js';
 import { multiChannelVerifyKeyboard } from '../utils/keyboards.js';
-import { multiChannelVerifyMessage } from '../utils/messages.js';
+import { buildMultiChannelVerifyMessage } from '../utils/messages.js';
+import { getLang, t } from '../utils/i18n.js';
 import logger from '../utils/logger.js';
 
 // Throttle lastActivityAt saves — only write to DB every 5 min per user
@@ -47,6 +48,8 @@ export async function getOrCreateUser(ctx, next) {
       }
     }
     ctx.dbUser = user;
+    // Attacher la langue au contexte pour accès facile
+    ctx.userLang = user.language || 'fr';
   } catch (err) {
     logger.error('getOrCreateUser error', { err: err.message });
   }
@@ -58,7 +61,8 @@ export async function getOrCreateUser(ctx, next) {
 export async function checkBanned(ctx, next) {
   if (!ctx.dbUser) return next();
   if (ctx.dbUser.banned) {
-    return ctx.reply('🚫 Ton compte a été suspendu. Contacte le support pour plus d\'informations.').catch(() => {});
+    const lang = getLang(ctx);
+    return ctx.reply(t(lang, 'banned')).catch(() => {});
   }
   return next();
 }
@@ -70,7 +74,8 @@ export async function checkMaintenance(ctx, next) {
 
   const maintenance = await getSetting('maintenance_mode');
   if (maintenance) {
-    return ctx.reply('🚧 *Mode maintenance activé*\n\nLe bot est temporairement indisponible. Revenez plus tard !', {
+    const lang = getLang(ctx);
+    return ctx.reply(t(lang, 'maintenance'), {
       parse_mode: 'Markdown',
     }).catch(() => {});
   }
@@ -99,7 +104,6 @@ export async function checkChannelMembership(ctx, next) {
     const channels = await RequiredChannel.findAll();
     if (!channels.length) return next();
 
-    // Check cache first
     const cached = _membershipCache.get(userId);
     if (cached && Date.now() < cached.expiresAt) {
       if (cached.missing.length === 0) return next();
@@ -135,7 +139,6 @@ export async function getMissingChannels(telegram, userId, channels) {
       const isMember = ['member', 'administrator', 'creator'].includes(member.status);
       if (!isMember) missing.push(ch);
     } catch (err) {
-      // Bot pas dans le canal ou erreur API → on bloque quand même pour forcer l'adhésion
       logger.warn('getMissingChannels: impossible de vérifier canal', { chatId: ch.chatIdOrUrl, err: err.message });
       missing.push(ch);
     }
@@ -149,8 +152,9 @@ export function clearMembershipCache(userId) {
 }
 
 async function sendMultiVerifyMessage(ctx, missingChannels) {
-  const text = multiChannelVerifyMessage(missingChannels);
-  const keyboard = multiChannelVerifyKeyboard(missingChannels);
+  const lang = getLang(ctx);
+  const text = buildMultiChannelVerifyMessage(missingChannels, lang);
+  const keyboard = multiChannelVerifyKeyboard(missingChannels, lang);
   await ctx.reply(text, {
     parse_mode: 'Markdown',
     ...keyboard,

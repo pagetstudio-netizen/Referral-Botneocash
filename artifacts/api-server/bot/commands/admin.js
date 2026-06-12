@@ -562,37 +562,51 @@ export async function handleAdminInput(ctx) {
   }
 }
 
-// ─── Diffusion globale ────────────────────────────────────────────────────────
+// ─── Diffusion globale avec traduction automatique ───────────────────────────
 export async function executeBroadcast(ctx, session) {
   await ctx.answerCbQuery('📢 Diffusion en cours...').catch(() => {});
 
-  // Chargement de TOUS les utilisateurs non bannis (fix : find() est synchrone, limit() est async)
   const users = await User.find({ banned: false }).limit(1000000);
   const total = users.length;
 
   let sent = 0, blocked = 0, failed = 0;
 
-  // Message de progression initial
   const progressMsg = await ctx.reply(
-    `📢 *Diffusion en cours...*\n\n👥 Total : *${total}* utilisateurs\n📤 Envoyé : 0\n🚫 Bloqués : 0\n❌ Erreurs : 0`,
+    `📢 *Diffusion en cours...*\n\n👥 Total : *${total}* utilisateurs\n📤 Envoyé : 0\n🚫 Bloqués : 0\n❌ Erreurs : 0\n🌐 Traduction : activée`,
     { parse_mode: 'Markdown' }
   );
+
+  // ── Pré-traduire l'annonce dans les 4 langues ─────────────────────────────
+  let translatedTexts = { fr: session.broadcastText, en: session.broadcastText, de: session.broadcastText, zh: session.broadcastText };
+  if (session.broadcastText) {
+    try {
+      const { translateToAll } = await import('../utils/translate.js');
+      const { SUPPORTED_LANGUAGES } = await import('../utils/i18n.js');
+      translatedTexts = await translateToAll(session.broadcastText, 'fr', SUPPORTED_LANGUAGES);
+      logger.info('Broadcast traductions prêtes', { langs: Object.keys(translatedTexts) });
+    } catch (translErr) {
+      logger.warn('Broadcast: traduction échouée, envoi en français', { err: translErr.message });
+    }
+  }
 
   const replyOpts = session.broadcastButton
     ? { reply_markup: { inline_keyboard: [[{ text: session.broadcastButton.label, url: session.broadcastButton.url }]] } }
     : {};
 
   for (const user of users) {
+    const userLang = user.language || 'fr';
+    const msgText = translatedTexts[userLang] || translatedTexts['fr'] || session.broadcastText;
+
     try {
       if (session.broadcastPhoto) {
         const fileId = session.broadcastPhoto[session.broadcastPhoto.length - 1].file_id;
         await ctx.telegram.sendPhoto(user.telegramId, fileId, {
-          caption: session.broadcastText || '',
+          caption: msgText || '',
           parse_mode: 'Markdown',
           ...replyOpts,
         });
       } else {
-        await ctx.telegram.sendMessage(user.telegramId, session.broadcastText, {
+        await ctx.telegram.sendMessage(user.telegramId, msgText, {
           parse_mode: 'Markdown',
           ...replyOpts,
         });
@@ -600,19 +614,17 @@ export async function executeBroadcast(ctx, session) {
       sent++;
     } catch (err) {
       const errMsg = err?.message || '';
-      // Utilisateur a bloqué le bot ou désactivé son compte
       if (errMsg.includes('blocked') || errMsg.includes('deactivated') || errMsg.includes('chat not found') || errMsg.includes('user is deactivated')) {
         blocked++;
       } else if (errMsg.includes('Too Many Requests') || errMsg.includes('429')) {
-        // Flood control — pause plus longue et retry
         const retryAfter = (err?.parameters?.retry_after || 5) * 1000;
         await new Promise((r) => setTimeout(r, retryAfter));
         try {
           if (session.broadcastPhoto) {
             const fileId = session.broadcastPhoto[session.broadcastPhoto.length - 1].file_id;
-            await ctx.telegram.sendPhoto(user.telegramId, fileId, { caption: session.broadcastText || '', parse_mode: 'Markdown', ...replyOpts });
+            await ctx.telegram.sendPhoto(user.telegramId, fileId, { caption: msgText || '', parse_mode: 'Markdown', ...replyOpts });
           } else {
-            await ctx.telegram.sendMessage(user.telegramId, session.broadcastText, { parse_mode: 'Markdown', ...replyOpts });
+            await ctx.telegram.sendMessage(user.telegramId, msgText, { parse_mode: 'Markdown', ...replyOpts });
           }
           sent++;
         } catch {
@@ -623,10 +635,8 @@ export async function executeBroadcast(ctx, session) {
       }
     }
 
-    // Délai anti-flood Telegram (max 30 msg/sec → 35ms de sécurité)
     await new Promise((r) => setTimeout(r, 35));
 
-    // Mise à jour progression toutes les 50 personnes
     const processed = sent + blocked + failed;
     if (processed > 0 && processed % 50 === 0) {
       await ctx.telegram.editMessageText(
@@ -639,12 +649,11 @@ export async function executeBroadcast(ctx, session) {
     }
   }
 
-  // Rapport final
   await ctx.telegram.editMessageText(
     ctx.chat.id,
     progressMsg.message_id,
     undefined,
-    `✅ *DIFFUSION TERMINÉE !*\n\n━━━━━━━━━━━━━━━━━━\n👥 Total ciblé : *${total}*\n📤 Reçu : *${sent}*\n🚫 Bloqué le bot : *${blocked}*\n❌ Autres erreurs : *${failed}*\n━━━━━━━━━━━━━━━━━━`,
+    `✅ *DIFFUSION TERMINÉE !*\n\n━━━━━━━━━━━━━━━━━━\n👥 Total ciblé : *${total}*\n📤 Reçu : *${sent}*\n🚫 Bloqué le bot : *${blocked}*\n❌ Autres erreurs : *${failed}*\n🌐 Traduit automatiquement en FR/EN/DE/ZH\n━━━━━━━━━━━━━━━━━━`,
     { parse_mode: 'Markdown' }
   ).catch(() => {});
 

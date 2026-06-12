@@ -1,30 +1,42 @@
 /**
- * Claviers inline et persistants pour NeoCash
+ * Claviers inline et persistants pour NeoCash — multilingue
  */
 import { Markup } from 'telegraf';
 import { getCountryList } from './countries.js';
+import { t, BUTTON_LABELS, LANGUAGE_NAMES } from './i18n.js';
 
-// ─── Clavier principal persistant ─────────────────────────────────────────────
-export const mainKeyboard = Markup.keyboard([
-  ['💰 Solde', '🎁 Bonus Quotidien'],
-  ['👥 Parrainage', '💸 Retrait'],
-  ['📞 Support', '📖 Explication'],
-])
-  .resize()
-  .persistent();
-
-// ─── Menu vérification canal (ancien — gardé pour compatibilité) ───────────────
-export function verifyKeyboard(joinUrl, verifyCallback = 'verify_channel') {
-  const buttons = [];
-  if (joinUrl) buttons.push(Markup.button.url('📢 Rejoindre', joinUrl));
-  buttons.push(Markup.button.callback('✅ Vérifier', verifyCallback));
-  return Markup.inlineKeyboard([buttons]);
+// ─── Clavier principal persistant (langue spécifique) ─────────────────────────
+export function getMainKeyboard(lang = 'fr') {
+  const L = (key) => BUTTON_LABELS[key][lang] || BUTTON_LABELS[key]['fr'];
+  return Markup.keyboard([
+    [L('balance'), L('bonus')],
+    [L('referral'), L('withdrawal')],
+    [L('support'), L('explanation')],
+    [L('changeLanguage')],
+  ]).resize().persistent();
 }
 
+// Clavier par défaut (français) pour compatibilité
+export const mainKeyboard = getMainKeyboard('fr');
+
+// ─── Clavier de sélection de langue ──────────────────────────────────────────
+export const languageKeyboard = Markup.inlineKeyboard([
+  [
+    Markup.button.callback('🇫🇷 Français', 'set_lang_fr'),
+    Markup.button.callback('🇬🇧 English', 'set_lang_en'),
+  ],
+  [
+    Markup.button.callback('🇩🇪 Deutsch', 'set_lang_de'),
+    Markup.button.callback('🇨🇳 中文', 'set_lang_zh'),
+  ],
+]);
+
 // ─── Menu vérification multi-canaux ───────────────────────────────────────────
-export function multiChannelVerifyKeyboard(channels) {
+export function multiChannelVerifyKeyboard(channels, lang = 'fr') {
   const rows = channels.map(ch => {
-    const label = ch.label || (ch.type === 'website' ? '🌐 Visiter le site' : '📢 Rejoindre');
+    const label = ch.label || (ch.type === 'website'
+      ? t(lang, 'channel_visit_btn')
+      : t(lang, 'channel_join_btn'));
     let url;
     if (ch.type === 'website') {
       url = ch.chatIdOrUrl;
@@ -33,25 +45,22 @@ export function multiChannelVerifyKeyboard(channels) {
       if (idStr.startsWith('http')) {
         url = idStr;
       } else if (idStr.startsWith('-100')) {
-        // Supergroupe / canal privé — format t.me/c/
         url = `https://t.me/c/${idStr.replace('-100', '')}`;
       } else if (idStr.startsWith('-')) {
-        // Ancien groupe
         url = `https://t.me/c/${idStr.slice(1)}`;
       } else {
-        // @username ou username simple
         url = `https://t.me/${idStr.replace('@', '')}`;
       }
     }
     return [Markup.button.url(label, url)];
   });
 
-  rows.push([Markup.button.callback('✅ Vérifier mon accès', 'verify_channel')]);
+  rows.push([Markup.button.callback(t(lang, 'channel_verify_btn'), 'verify_channel')]);
   return Markup.inlineKeyboard(rows);
 }
 
 // ─── Clavier pays pour retrait ─────────────────────────────────────────────────
-export function countriesKeyboard() {
+export function countriesKeyboard(lang = 'fr') {
   const countries = getCountryList();
   const rows = [];
   for (let i = 0; i < countries.length; i += 2) {
@@ -63,21 +72,31 @@ export function countriesKeyboard() {
     }
     rows.push(row);
   }
-  rows.push([Markup.button.callback('❌ Annuler', 'cancel_withdrawal')]);
+  rows.push([Markup.button.callback(t(lang, 'withdrawal_cancel_btn'), 'cancel_withdrawal')]);
   return Markup.inlineKeyboard(rows);
 }
 
 // ─── Clavier opérateurs ────────────────────────────────────────────────────────
-export function operatorsKeyboard(operators, countryCode) {
+export function operatorsKeyboard(operators, countryCode, lang = 'fr') {
   const rows = operators.map((op) => [
     Markup.button.callback(op, `operator_${countryCode}_${op}`),
   ]);
-  rows.push([Markup.button.callback('⬅️ Retour', 'back_to_countries')]);
+  rows.push([Markup.button.callback(t(lang, 'withdrawal_back_btn'), 'back_to_countries')]);
   return Markup.inlineKeyboard(rows);
 }
 
 // ─── Clavier confirmation retrait ─────────────────────────────────────────────
-export const confirmWithdrawKeyboard = Markup.inlineKeyboard([
+export function confirmWithdrawKeyboard(lang = 'fr') {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback(t(lang, 'withdrawal_confirm_btn'), 'confirm_withdrawal'),
+      Markup.button.callback(t(lang, 'withdrawal_cancel_btn'), 'cancel_withdrawal'),
+    ],
+  ]);
+}
+
+// Alias statique pour compatibilité
+export const confirmWithdrawKeyboardDefault = Markup.inlineKeyboard([
   [
     Markup.button.callback('✅ Confirmer', 'confirm_withdrawal'),
     Markup.button.callback('❌ Annuler', 'cancel_withdrawal'),
