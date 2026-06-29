@@ -1,36 +1,48 @@
-# [Project name]
+# Moon Crypto Bot — Admin Dashboard
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Telegram crypto gains & referral system with an Express API + bot backend and a React/Vite admin dashboard.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server + Telegram bot (port 8080)
+- `pnpm --filter @workspace/admin-dashboard run dev` — run the admin dashboard (port 22133)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string, `BOT_TOKEN` — Telegram bot token, `ADMIN_EMAIL` / `ADMIN_PASSWORD` — admin login creds
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- API: Express 5 + Telegraf (Telegram bot)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
+- Frontend: React + Vite, Tailwind CSS, shadcn/ui, wouter, TanStack Query
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/api-server/src/` — Express API server (routes, middlewares, lib)
+- `artifacts/api-server/bot/` — Telegram bot (legacy JS)
+- `artifacts/admin-dashboard/src/` — React admin dashboard
+- `lib/db/` — Drizzle schema + migrations
+- `lib/api-spec/` — OpenAPI spec (source of truth for API contracts)
+- `lib/api-zod/` — Generated Zod schemas
+- `lib/api-client-react/` — Generated TanStack Query hooks
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Admin routes live in `artifacts/api-server/src/routes/admin.ts`; the bot's Postgres DB is accessed via `bot/database/db.js`
+- Auth token stored in localStorage as `moon_crypto_token`; set via `setAuthTokenGetter` in App.tsx
+- pino + pino-pretty for structured logging (dev mode pretty-prints, production outputs JSON)
+- Dashboard uses `wouter` with `BASE_URL` base path for Replit proxy compatibility
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Telegram bot that rewards users for subscribing to crypto channels, with referral bonuses
+- Admin dashboard for managing users, withdrawals, channels, settings, and broadcasts
 
 ## User preferences
 
@@ -38,7 +50,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `pino-pretty` must be in `dependencies` (not devDependencies) — pino loads it at runtime as a worker thread
+- `@types/express` and `@types/pg` are NOT in the pnpm catalog — use explicit semver strings in package.json
+- `@types/node` and `tsx` ARE in the catalog — use `catalog:` for those
 
 ## Pointers
 
