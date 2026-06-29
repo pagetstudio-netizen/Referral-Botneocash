@@ -3,14 +3,14 @@
   "buildCommand": "pnpm --filter @workspace/admin-dashboard run build",
   "outputDirectory": "artifacts/admin-dashboard/dist/public",
   "functions": {
-    "api/index.js": {
+    "api/index.mjs": {
       "maxDuration": 60
     }
   },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "dest": "/api/index.mjs"
     },
     {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|map))",

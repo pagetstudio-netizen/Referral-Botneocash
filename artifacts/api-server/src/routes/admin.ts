@@ -5,28 +5,33 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_NAME = process.env.ADMIN_NAME || "Administrateur";
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET;
 
-if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !JWT_SECRET) {
-  throw new Error(
-    "Required env vars missing: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_JWT_SECRET must all be set."
-  );
+function getRequiredEnv() {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!email || !password || !secret) {
+    throw new Error(
+      "Required env vars missing: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_JWT_SECRET must all be set."
+    );
+  }
+  return { email, password, secret };
 }
 
 function signToken(payload) {
+  const { secret } = getRequiredEnv();
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
   const body = Buffer.from(JSON.stringify({ ...payload, iat: Math.floor(Date.now() / 1000) })).toString("base64url");
-  const sig = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+  const sig = crypto.createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
   return `${header}.${body}.${sig}`;
 }
 
 function verifyToken(token) {
   try {
+    const { secret } = getRequiredEnv();
     const [header, body, sig] = token.split(".");
-    const expected = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
+    const expected = crypto.createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
     if (sig !== expected) return null;
     const payload = JSON.parse(Buffer.from(body, "base64url").toString());
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
@@ -42,10 +47,14 @@ function authMiddleware(req, res, next) {
     return res.status(401).json({ error: "Non autorisé" });
   }
   const token = auth.slice(7);
-  const payload = verifyToken(token);
-  if (!payload) return res.status(401).json({ error: "Token invalide ou expiré" });
-  req.admin = payload;
-  next();
+  try {
+    const payload = verifyToken(token);
+    if (!payload) return res.status(401).json({ error: "Token invalide ou expiré" });
+    req.admin = payload;
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 }
 
 async function getDb() {
@@ -54,20 +63,26 @@ async function getDb() {
 }
 
 router.post("/admin/login", (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email et mot de passe requis" });
+  try {
+    const { email: adminEmail, password: adminPassword } = getRequiredEnv();
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email et mot de passe requis" });
+    }
+    if (email.toLowerCase() !== adminEmail.toLowerCase() || password !== adminPassword) {
+      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+    }
+    const token = signToken({
+      email: adminEmail,
+      name: ADMIN_NAME,
+      exp: Math.floor(Date.now() / 1000) + 86400 * 7,
+    });
+    logger.info({ email }, "Admin web login");
+    res.json({ token, admin: { email: adminEmail, name: ADMIN_NAME } });
+  } catch (err) {
+    logger.error({ err }, "Admin login error");
+    res.status(500).json({ error: err.message });
   }
-  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: "Email ou mot de passe incorrect" });
-  }
-  const token = signToken({
-    email: ADMIN_EMAIL,
-    name: ADMIN_NAME,
-    exp: Math.floor(Date.now() / 1000) + 86400 * 7,
-  });
-  logger.info({ email }, "Admin web login");
-  res.json({ token, admin: { email: ADMIN_EMAIL, name: ADMIN_NAME } });
 });
 
 router.get("/admin/stats", authMiddleware, async (req, res) => {
