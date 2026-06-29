@@ -1,0 +1,71 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# compiled output
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+.expo
+.expo-shared
+
+# Exception : les fichiers de build sont pré-construits et committés pour Plesk
+# (Plesk n'a pas besoin de pnpm/node — il utilise directement ces fichiers)
+!artifacts/admin-dashboard/dist/
+!artifacts/admin-dashboard/dist/**
+!artifacts/api-server/dist/
+!artifacts/api-server/dist/**
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.json
+
+# Replit
+.cache/
+.local/
+
+# Variables d'environnement (ne jamais committer)
+.env
+artifacts/api-server/.env
+
+# Logs PM2
+artifacts/api-server/logs/
+
+# Dossiers inutiles en prod
+artifacts/mockup-sandbox/
+scripts/
+
+# Sorties de build des packages lib (générés automatiquement)
+lib/*/dist/
+lib/api-spec/src/generated/

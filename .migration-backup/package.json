@@ -1,0 +1,16 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "Moon Crypto Bot — Bot Telegram crypto gains & parrainage",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "node artifacts/api-server/bot/index.js",
+    "build": "cd artifacts/admin-dashboard && npm install && npx vite build --config vite.config.ts",
+    "install:bot": "cd artifacts/api-server && npm install --omit=dev",
+    "postinstall": "cd artifacts/api-server && npm install --omit=dev"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

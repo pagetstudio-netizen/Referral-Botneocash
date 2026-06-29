@@ -1,0 +1,27 @@
+{
+  "name": "@workspace/api-server",
+  "version": "1.0.0",
+  "description": "Bot Telegram Moon Crypto — gains et parrainage crypto",
+  "private": true,
+  "type": "module",
+  "main": "bot/index.js",
+  "scripts": {
+    "start": "node bot/index.js",
+    "dev": "PORT=8080 node bot/index.js",
+    "build": "node build.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.3",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  }
+}
