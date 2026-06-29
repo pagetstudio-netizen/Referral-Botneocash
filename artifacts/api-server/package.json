@@ -7,7 +7,7 @@
   "main": "bot/index.js",
   "scripts": {
     "start": "node bot/index.js",
-    "dev": "node bot/index.js",
+    "dev": "PORT=8080 node bot/index.js",
     "build": "node build.mjs"
   },
   "engines": {
