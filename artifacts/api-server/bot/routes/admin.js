@@ -44,10 +44,14 @@ function maskName(name) {
 const router = Router();
 
 // ─── Config Admin ──────────────────────────────────────────────────────────────
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'pagetstudio@gmail.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'AAbb11##';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Administrateur';
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'moon-crypto-admin-secret-2024';
+const JWT_SECRET = process.env.ADMIN_JWT_SECRET;
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !JWT_SECRET) {
+  throw new Error('Variables d\'environnement requises manquantes: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_JWT_SECRET');
+}
 
 function signToken(payload) {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');

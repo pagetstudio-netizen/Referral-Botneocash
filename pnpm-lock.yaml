@@ -156,6 +156,13 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      express:
+        specifier: ^4.21.2
+        version: 4.22.2
+      pg:
+        specifier: ^8.13.3
+        version: 8.22.0
     devDependencies:
       prettier:
         specifier: ^3.8.4
