@@ -1,11 +1,12 @@
 /**
- * Middleware d'authentification et vérification canal (multi-canaux)
+ * Middleware d'authentification et vérification canal
+ * — chaîne officielle principale (settings) + chaînes supplémentaires optionnelles (table)
  */
 import User from '../models/User.js';
 import RequiredChannel from '../models/RequiredChannel.js';
 import { getSetting } from '../models/Settings.js';
-import { multiChannelVerifyKeyboard } from '../utils/keyboards.js';
-import { buildMultiChannelVerifyMessage } from '../utils/messages.js';
+import { singleChannelVerifyKeyboard, multiChannelVerifyKeyboard } from '../utils/keyboards.js';
+import { buildSingleChannelVerifyMessage, buildMultiChannelVerifyMessage } from '../utils/messages.js';
 import { getLang, t } from '../utils/i18n.js';
 import logger from '../utils/logger.js';
 
@@ -82,15 +83,30 @@ export async function checkMaintenance(ctx, next) {
   return next();
 }
 
-// ─── Cache adhésion canaux par utilisateur (TTL 5 min) ────────────────────────
+// ─── Cache adhésion canaux (TTL 5 min) ────────────────────────────────────────
 const _membershipCache = new Map();
 const MEMBERSHIP_TTL = 5 * 60_000;
 
-function _invalidateMembership(userId) {
-  _membershipCache.delete(userId);
+// ─── Construire la liste complète des chaînes requises ────────────────────────
+// Chaîne officielle principale (settings) + chaînes supplémentaires (table)
+async function buildRequiredList(ctx) {
+  const userLang = ctx.userLang || ctx.dbUser?.language || 'fr';
+  const extra = await RequiredChannel.findAllForLang(userLang);
+
+  const primaryId = await getSetting('required_channel');
+  if (!primaryId) return extra;
+
+  const primaryLabel = (await getSetting('required_channel_label')) || primaryId;
+  const primaryEntry = {
+    id: '__primary__',
+    chatIdOrUrl: primaryId,
+    label: primaryLabel,
+    type: 'channel',
+  };
+  return [primaryEntry, ...extra];
 }
 
-// ─── Vérifier adhésion aux canaux obligatoires (multi-canaux, filtré par langue)
+// ─── Vérifier adhésion à toutes les chaînes requises ─────────────────────────
 export async function checkChannelMembership(ctx, next) {
   if (ctx.callbackQuery?.data === 'verify_channel') return next();
 
@@ -101,31 +117,27 @@ export async function checkChannelMembership(ctx, next) {
   if (isAdmin) return next();
 
   try {
-    // Filtrer les canaux selon la langue de l'utilisateur
-    const userLang = ctx.userLang || ctx.dbUser?.language || 'fr';
-    const channels = await RequiredChannel.findAllForLang(userLang);
-    if (!channels.length) return next();
+    const required = await buildRequiredList(ctx);
+    if (!required.length) return next(); // aucune chaîne configurée → accès libre
 
-    // Clé cache incluant la langue pour éviter les conflits entre langues
-    const cacheKey = `${userId}_${userLang}`;
-    const cached = _membershipCache.get(cacheKey);
+    const cached = _membershipCache.get(userId);
     if (cached && Date.now() < cached.expiresAt) {
       if (cached.missing.length === 0) return next();
-      return sendMultiVerifyMessage(ctx, cached.missing);
+      return sendVerifyMessage(ctx, cached.missing);
     }
 
-    const missing = await getMissingChannels(ctx.telegram, userId, channels);
-    _membershipCache.set(cacheKey, { missing, expiresAt: Date.now() + MEMBERSHIP_TTL });
+    const missing = await getMissingChannels(ctx.telegram, userId, required);
+    _membershipCache.set(userId, { missing, expiresAt: Date.now() + MEMBERSHIP_TTL });
 
     if (!missing.length) return next();
-    return sendMultiVerifyMessage(ctx, missing);
+    return sendVerifyMessage(ctx, missing);
   } catch (err) {
     logger.warn('checkChannelMembership error', { err: err.message });
-    return next();
+    return next(); // fail open en cas d'erreur
   }
 }
 
-// ─── Utilitaire : trouver les canaux non rejoints ─────────────────────────────
+// ─── Trouver les chaînes non rejointes ────────────────────────────────────────
 export async function getMissingChannels(telegram, userId, channels) {
   const missing = [];
   for (const ch of channels) {
@@ -143,35 +155,42 @@ export async function getMissingChannels(telegram, userId, channels) {
       const isMember = ['member', 'administrator', 'creator'].includes(member.status);
       if (!isMember) missing.push(ch);
     } catch (err) {
-      logger.warn('getMissingChannels: impossible de vérifier canal', { chatId: ch.chatIdOrUrl, err: err.message });
+      logger.warn('getMissingChannels: impossible de vérifier', { chatId: ch.chatIdOrUrl, err: err.message });
       missing.push(ch);
     }
   }
   return missing;
 }
 
-// ─── Invalider le cache après vérification réussie ou changement de langue ────
-export function clearMembershipCache(userId) {
-  // Supprimer toutes les entrées de cache pour cet utilisateur (toutes les langues)
-  const keysToDelete = [];
-  for (const key of _membershipCache.keys()) {
-    if (key === String(userId) || key.startsWith(`${userId}_`)) {
-      keysToDelete.push(key);
-    }
-  }
-  for (const key of keysToDelete) {
-    _membershipCache.delete(key);
+// ─── Vérification rapide d'une chaîne (utilisée par bot.js) ──────────────────
+export async function _checkTelegramMembership(telegram, userId, channelId) {
+  try {
+    const member = await telegram.getChatMember(channelId, userId);
+    return ['member', 'administrator', 'creator'].includes(member.status);
+  } catch {
+    return true; // fail open
   }
 }
 
-async function sendMultiVerifyMessage(ctx, missingChannels) {
+// ─── Invalider le cache d'un utilisateur ─────────────────────────────────────
+export function clearMembershipCache(userId) {
+  if (userId) _membershipCache.delete(Number(userId));
+  else _membershipCache.clear();
+}
+
+// ─── Envoyer le message de vérification (1 ou plusieurs chaînes) ─────────────
+async function sendVerifyMessage(ctx, missingChannels) {
   const lang = getLang(ctx);
-  const text = buildMultiChannelVerifyMessage(missingChannels, lang);
-  const keyboard = multiChannelVerifyKeyboard(missingChannels, lang);
-  await ctx.reply(text, {
-    parse_mode: 'Markdown',
-    ...keyboard,
-  }).catch(() => {});
+  let text, keyboard;
+  if (missingChannels.length === 1) {
+    const ch = missingChannels[0];
+    text = buildSingleChannelVerifyMessage(ch.label || ch.chatIdOrUrl, lang);
+    keyboard = singleChannelVerifyKeyboard(ch.chatIdOrUrl, ch.label, lang);
+  } else {
+    text = buildMultiChannelVerifyMessage(missingChannels, lang);
+    keyboard = multiChannelVerifyKeyboard(missingChannels, lang);
+  }
+  await ctx.reply(text, { parse_mode: 'Markdown', ...keyboard }).catch(() => {});
 }
 
 // ─── Cache isUserAdmin (TTL 5 min) ────────────────────────────────────────────

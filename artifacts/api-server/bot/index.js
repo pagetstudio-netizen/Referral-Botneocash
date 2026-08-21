@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 // ─── Routes API (toujours en premier) ────────────────────────────────────────
 app.use('/api', adminRouter);
 
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/api/healthz'], (req, res) => {
   res.json({
     status: 'ok',
     bot: 'Moon Crypto',

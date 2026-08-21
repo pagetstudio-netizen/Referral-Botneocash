@@ -11,6 +11,7 @@ export function getMainKeyboard(lang = 'fr') {
   return Markup.keyboard([
     [L('balance'), L('bonus')],
     [L('referral'), L('withdrawal')],
+    [L('watchAds')],
     [L('support'), L('explanation')],
     [L('changeLanguage')],
   ]).resize().persistent();
@@ -57,6 +58,26 @@ export function multiChannelVerifyKeyboard(channels, lang = 'fr') {
 
   rows.push([Markup.button.callback(t(lang, 'channel_verify_btn'), 'verify_channel')]);
   return Markup.inlineKeyboard(rows);
+}
+
+// ─── Clavier vérification chaîne unique officielle ────────────────────────────
+export function singleChannelVerifyKeyboard(channelId, label = null, lang = 'fr') {
+  const idStr = String(channelId).trim();
+  let url;
+  if (idStr.startsWith('http')) {
+    url = idStr;
+  } else if (idStr.startsWith('-100')) {
+    url = `https://t.me/c/${idStr.replace('-100', '')}`;
+  } else if (idStr.startsWith('-')) {
+    url = `https://t.me/c/${idStr.slice(1)}`;
+  } else {
+    url = `https://t.me/${idStr.replace('@', '')}`;
+  }
+  const btnLabel = label && label !== channelId ? `📢 ${label}` : t(lang, 'channel_join_btn');
+  return Markup.inlineKeyboard([
+    [Markup.button.url(btnLabel, url)],
+    [Markup.button.callback(t(lang, 'channel_verify_btn'), 'verify_channel')],
+  ]);
 }
 
 // ─── Clavier pays pour retrait ─────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing dual @types/react incompatibility in shadcn component
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 

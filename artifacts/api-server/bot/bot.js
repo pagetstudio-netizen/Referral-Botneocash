@@ -40,6 +40,7 @@ import {
 import { handleBalance } from './handlers/balance.js';
 import { handleBonus } from './handlers/bonus.js';
 import { handleReferral } from './handlers/referral.js';
+import { handleWatchAds, handleAdsClaim } from './commands/ads.js';
 import { handleExplanation } from './handlers/explanation.js';
 import { handleSupport, handleSupportMessage, handleCancelSupport } from './handlers/support.js';
 import {
@@ -66,6 +67,7 @@ const ALL_BUTTON_LABELS = {
   bonus: Object.values(BUTTON_LABELS.bonus),
   referral: Object.values(BUTTON_LABELS.referral),
   withdrawal: Object.values(BUTTON_LABELS.withdrawal),
+  watchAds: Object.values(BUTTON_LABELS.watchAds),
   support: Object.values(BUTTON_LABELS.support),
   explanation: Object.values(BUTTON_LABELS.explanation),
   changeLanguage: Object.values(BUTTON_LABELS.changeLanguage),
@@ -185,8 +187,12 @@ export function createBot() {
   bot.hears(ALL_BUTTON_LABELS.bonus, checkChannelMembership, handleBonus);
   bot.hears(ALL_BUTTON_LABELS.referral, checkChannelMembership, handleReferral);
   bot.hears(ALL_BUTTON_LABELS.withdrawal, checkChannelMembership, handleWithdrawal);
+  bot.hears(ALL_BUTTON_LABELS.watchAds, checkChannelMembership, handleWatchAds);
   bot.hears(ALL_BUTTON_LABELS.support, checkChannelMembership, handleSupport);
   bot.hears(ALL_BUTTON_LABELS.explanation, handleExplanation);
+
+  // ─── Callback : réclamer la récompense Adsgram ────────────────────────────────
+  bot.action(/^ads_claim_/, checkChannelMembership, handleAdsClaim);
 
   // ─── Changement de langue depuis le menu ─────────────────────────────────────
   bot.hears(ALL_BUTTON_LABELS.changeLanguage, async (ctx) => {
@@ -196,31 +202,38 @@ export function createBot() {
     });
   });
 
-  // ─── Callbacks inline — vérification canal ────────────────────────────────────
+  // ─── Callbacks inline — vérification canaux (principale + supplémentaires) ───
   bot.action('verify_channel', async (ctx) => {
     await ctx.answerCbQuery();
     const userId = ctx.from.id;
     const lang = getLang(ctx);
 
     try {
+      const { getSetting } = await import('./models/Settings.js');
       const { default: RequiredChannel } = await import('./models/RequiredChannel.js');
       const { getMissingChannels } = await import('./middleware/auth.js');
 
-      const channels = await RequiredChannel.findAllForLang(lang);
+      // Construire la liste combinée (chaîne officielle + supplémentaires)
+      const userLang = ctx.userLang || lang;
+      const extra = await RequiredChannel.findAllForLang(userLang);
+      const primaryId = await getSetting('required_channel');
+      const allRequired = [];
+      if (primaryId) {
+        const primaryLabel = (await getSetting('required_channel_label')) || primaryId;
+        allRequired.push({ id: '__primary__', chatIdOrUrl: primaryId, label: primaryLabel, type: 'channel' });
+      }
+      allRequired.push(...extra);
 
-      if (!channels.length) {
-        ctx.dbUser.isVerified = true;
-        await ctx.dbUser.save();
+      // Aucune chaîne configurée → accès accordé directement
+      if (!allRequired.length) {
+        if (ctx.dbUser) { ctx.dbUser.isVerified = true; await ctx.dbUser.save().catch(() => {}); }
         clearMembershipCache(userId);
-        await ctx.editMessageText('✅ ' + (lang === 'en' ? 'Access granted!' : lang === 'de' ? 'Zugang gewährt!' : lang === 'zh' ? '访问权限已授予！' : 'Vérification réussie !')).catch(() => {});
+        await ctx.editMessageText('✅ ' + (lang === 'en' ? 'Access granted!' : 'Accès accordé !')).catch(() => {});
         await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
-        return ctx.reply(t(lang, 'channel_access_granted'), {
-          parse_mode: 'Markdown', ...getMainKeyboard(lang),
-        });
+        return ctx.reply(t(lang, 'channel_access_granted'), { parse_mode: 'Markdown', ...getMainKeyboard(lang) });
       }
 
-      const stillMissing = await getMissingChannels(ctx.telegram, userId, channels);
-
+      const stillMissing = await getMissingChannels(ctx.telegram, userId, allRequired);
 
       if (stillMissing.length > 0) {
         const names = stillMissing.map(ch => ch.label || ch.chatIdOrUrl).join(', ');
@@ -228,22 +241,15 @@ export function createBot() {
           t(lang, 'channel_still_missing', names),
           { show_alert: true }
         ).catch(() => {});
-        await ctx.editMessageText(buildMultiChannelVerifyMessage(stillMissing, lang), {
-          parse_mode: 'Markdown',
-          ...multiChannelVerifyKeyboard(stillMissing, lang),
-        }).catch(() => {});
         return;
       }
 
-      ctx.dbUser.isVerified = true;
-      await ctx.dbUser.save();
+      if (ctx.dbUser) { ctx.dbUser.isVerified = true; await ctx.dbUser.save().catch(() => {}); }
       clearMembershipCache(userId);
-      await ctx.editMessageText('✅ ' + (lang === 'en' ? 'Access granted!' : lang === 'de' ? 'Zugang gewährt!' : lang === 'zh' ? '访问权限已授予！' : 'Accès accordé !')).catch(() => {});
+      await ctx.editMessageText('✅ ' + (lang === 'en' ? 'Access granted!' : 'Accès accordé !')).catch(() => {});
       await creditPendingReferral(ctx.dbUser, ctx.telegram, ctx.botInfo?.username);
       logger.info('verify_channel: accès accordé', { userId });
-      return ctx.reply(t(lang, 'channel_access_granted'), {
-        parse_mode: 'Markdown', ...getMainKeyboard(lang),
-      });
+      return ctx.reply(t(lang, 'channel_access_granted'), { parse_mode: 'Markdown', ...getMainKeyboard(lang) });
 
     } catch (err) {
       logger.error('verify_channel error', { err: err.message });

@@ -18,6 +18,7 @@ export const BUTTON_LABELS = {
   bonus: { fr: '🎁 Bonus Quotidien', en: '🎁 Daily Bonus', de: '🎁 Tagesbonus', zh: '🎁 每日奖励' },
   referral: { fr: '👥 Parrainage', en: '👥 Referral', de: '👥 Empfehlung', zh: '👥 推荐' },
   withdrawal: { fr: '💸 Retrait', en: '💸 Withdrawal', de: '💸 Auszahlung', zh: '💸 提现' },
+  watchAds: { fr: '📺 Regarder une pub (+0.002 USDT)', en: '📺 Watch an Ad (+0.002 USDT)', de: '📺 Werbung schauen (+0.002 USDT)', zh: '📺 看广告赚钱 (+0.002 USDT)' },
   support: { fr: '📞 Support', en: '📞 Support', de: '📞 Support', zh: '📞 支持' },
   explanation: { fr: '📖 Explication', en: '📖 Explanation', de: '📖 Erklärung', zh: '📖 说明' },
   changeLanguage: { fr: '🌐 Changer la langue', en: '🌐 Change Language', de: '🌐 Sprache ändern', zh: '🌐 更换语言' },

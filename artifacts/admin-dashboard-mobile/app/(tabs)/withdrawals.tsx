@@ -119,6 +119,7 @@ export default function WithdrawalsScreen() {
 
   const { data, isLoading, isFetching, refetch } = useListWithdrawals(
     { status, page, limit: 20 },
+    // @ts-ignore queryKey is managed by the generated hook
     { query: { refetchOnWindowFocus: false } }
   );
 

@@ -8,7 +8,7 @@ module.exports = {
   apps: [
     {
       name: 'neocash-bot',
-      script: './start.cjs',
+      script: './bot/index.js',
       cwd: __dirname,
 
       interpreter: 'node',

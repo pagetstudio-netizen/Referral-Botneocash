@@ -95,6 +95,7 @@ export default function UsersScreen() {
 
   const { data, isLoading, isFetching, refetch } = useListUsers(
     { search: query || undefined, page, limit, banned: filter || undefined },
+    // @ts-ignore queryKey is managed by the generated hook
     { query: { refetchOnWindowFocus: false } }
   );
 

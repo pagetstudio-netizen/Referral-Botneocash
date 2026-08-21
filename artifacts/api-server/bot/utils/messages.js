@@ -164,7 +164,7 @@ export async function explanationMessage(lang = 'fr') {
   );
 }
 
-// ─── Message vérification multi-canaux ─────────────────────────────────────────
+// ─── Message vérification multi-canaux (conservé pour compatibilité) ───────────
 export function buildMultiChannelVerifyMessage(channels, lang = 'fr') {
   const lines = channels.map((ch, i) => {
     const icon = ch.type === 'website' ? '🌐' : ch.type === 'group' ? '👥' : '📢';
@@ -184,6 +184,18 @@ export function buildMultiChannelVerifyMessage(channels, lang = 'fr') {
 
 export function multiChannelVerifyMessage(channels) {
   return buildMultiChannelVerifyMessage(channels, 'fr');
+}
+
+// ─── Message vérification chaîne unique officielle ─────────────────────────────
+export function buildSingleChannelVerifyMessage(label, lang = 'fr') {
+  const SEP = '━━━━━━━━━━━━━━━━━━';
+  return (
+    t(lang, 'channel_verify_title') + '\n\n' +
+    SEP + '\n' +
+    `📢 *${label}*\n\n` +
+    SEP + '\n' +
+    t(lang, 'channel_verify_steps', 1)
+  );
 }
 
 // ─── Notifications admin ───────────────────────────────────────────────────────

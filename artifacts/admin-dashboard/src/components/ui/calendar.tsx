@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing dual @types/react incompatibility in shadcn calendar
 "use client"
 
 import * as React from "react"

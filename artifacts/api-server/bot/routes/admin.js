@@ -44,26 +44,33 @@ function maskName(name) {
 const router = Router();
 
 // ─── Config Admin ──────────────────────────────────────────────────────────────
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Administrateur';
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET;
 
-if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !JWT_SECRET) {
-  throw new Error('Variables d\'environnement requises manquantes: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_JWT_SECRET');
+// Lazy config: read at request-time so the server starts without secrets.
+// Routes return 503 if the required vars are missing.
+function getAdminConfig() {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!email || !password || !secret) return null;
+  return { email, password, secret };
 }
 
 function signToken(payload) {
+  const cfg = getAdminConfig();
+  if (!cfg) throw new Error('Admin env vars not configured');
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify({ ...payload, iat: Math.floor(Date.now() / 1000) })).toString('base64url');
-  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  const sig = crypto.createHmac('sha256', cfg.secret).update(`${header}.${body}`).digest('base64url');
   return `${header}.${body}.${sig}`;
 }
 
 function verifyToken(token) {
   try {
+    const cfg = getAdminConfig();
+    if (!cfg) return null;
     const [header, body, sig] = token.split('.');
-    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    const expected = crypto.createHmac('sha256', cfg.secret).update(`${header}.${body}`).digest('base64url');
     if (sig !== expected) return null;
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
@@ -74,6 +81,9 @@ function verifyToken(token) {
 }
 
 function authMiddleware(req, res, next) {
+  if (!getAdminConfig()) {
+    return res.status(503).json({ error: 'Admin not configured: set ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_JWT_SECRET' });
+  }
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Non autorisé' });
@@ -87,22 +97,26 @@ function authMiddleware(req, res, next) {
 
 // ─── POST /api/admin/login ─────────────────────────────────────────────────────
 router.post('/admin/login', (req, res) => {
+  const cfg = getAdminConfig();
+  if (!cfg) {
+    return res.status(503).json({ error: 'Admin not configured: set ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_JWT_SECRET' });
+  }
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
   }
-  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() || password !== ADMIN_PASSWORD) {
+  if (email.toLowerCase() !== cfg.email.toLowerCase() || password !== cfg.password) {
     return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
   }
   const token = signToken({
-    email: ADMIN_EMAIL,
+    email: cfg.email,
     name: ADMIN_NAME,
     exp: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 jours
   });
   logger.info('Admin web login', { email });
   res.json({
     token,
-    admin: { email: ADMIN_EMAIL, name: ADMIN_NAME },
+    admin: { email: cfg.email, name: ADMIN_NAME },
   });
 });
 
@@ -510,7 +524,32 @@ router.put('/admin/settings', authMiddleware, async (req, res) => {
   }
 });
 
-// ─── GET /api/admin/channels ───────────────────────────────────────────────────
+// ─── GET /api/admin/channel — chaîne officielle principale ───────────────────
+router.get('/admin/channel', authMiddleware, async (req, res) => {
+  try {
+    const chatId = (await getSetting('required_channel')) || '';
+    const label  = (await getSetting('required_channel_label')) || '';
+    res.json({ chatId, label });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PUT /api/admin/channel — mettre à jour la chaîne officielle ──────────────
+router.put('/admin/channel', authMiddleware, async (req, res) => {
+  try {
+    const chatId = (req.body.chatId ?? '').trim();
+    const label  = (req.body.label  ?? '').trim();
+    await setSetting('required_channel', chatId);
+    await setSetting('required_channel_label', label);
+    logger.info('Admin updated official channel', { chatId, label });
+    res.json({ success: true, chatId, label });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/admin/channels — chaînes supplémentaires ───────────────────────
 router.get('/admin/channels', authMiddleware, async (req, res) => {
   try {
     const channels = await RequiredChannel.findAllAdmin();
@@ -529,7 +568,7 @@ router.get('/admin/channels', authMiddleware, async (req, res) => {
   }
 });
 
-// ─── POST /api/admin/channels ──────────────────────────────────────────────────
+// ─── POST /api/admin/channels — ajouter une chaîne supplémentaire ─────────────
 router.post('/admin/channels', authMiddleware, async (req, res) => {
   try {
     const { label, type, chatIdOrUrl, displayOrder } = req.body;
@@ -538,14 +577,14 @@ router.post('/admin/channels', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'type invalide (channel, group, website)' });
     }
     const ch = await RequiredChannel.create({ label, type, chatIdOrUrl, displayOrder: displayOrder ?? 0 });
-    logger.info('Admin added required channel', { label, type, chatIdOrUrl });
+    logger.info('Admin added extra required channel', { label, type, chatIdOrUrl });
     res.status(201).json({ id: ch.id, label: ch.label, type: ch.type, chatIdOrUrl: ch.chatIdOrUrl, displayOrder: ch.displayOrder, isActive: ch.isActive, subscribers: 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── PUT /api/admin/channels/:id ───────────────────────────────────────────────
+// ─── PUT /api/admin/channels/:id — modifier une chaîne supplémentaire ─────────
 router.put('/admin/channels/:id', authMiddleware, async (req, res) => {
   try {
     const { label, type, chatIdOrUrl, displayOrder, isActive } = req.body;
@@ -553,18 +592,18 @@ router.put('/admin/channels/:id', authMiddleware, async (req, res) => {
       label, type, chatIdOrUrl, displayOrder: displayOrder ?? 0, isActive: isActive ?? true,
     });
     if (!ch) return res.status(404).json({ error: 'Canal introuvable' });
-    logger.info('Admin updated required channel', { id: req.params.id });
+    logger.info('Admin updated extra required channel', { id: req.params.id });
     res.json({ id: ch.id, label: ch.label, type: ch.type, chatIdOrUrl: ch.chatIdOrUrl, displayOrder: ch.displayOrder, isActive: ch.isActive });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── DELETE /api/admin/channels/:id ────────────────────────────────────────────
+// ─── DELETE /api/admin/channels/:id — supprimer une chaîne supplémentaire ─────
 router.delete('/admin/channels/:id', authMiddleware, async (req, res) => {
   try {
     await RequiredChannel.delete(req.params.id);
-    logger.info('Admin deleted required channel', { id: req.params.id });
+    logger.info('Admin deleted extra required channel', { id: req.params.id });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
