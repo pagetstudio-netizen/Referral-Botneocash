@@ -47,7 +47,7 @@ export function formatDuration(ms) {
 
 // ─── Message de bienvenue ─────────────────────────────────────────────────────
 export async function welcomeMessage(firstName, lang = 'fr') {
-  const dailyBonus    = await getSetting('daily_bonus')    || 0.5;
+  const dailyBonus    = await getSetting('daily_bonus')    || 0.2;
   const referralBonus = await getSetting('referral_bonus') || 1.5;
   const minWithdraw   = await getSetting('min_withdraw')   || 15;
   return t(lang, 'welcome', escapeMarkdown(firstName), referralBonus, dailyBonus, minWithdraw);
@@ -141,7 +141,7 @@ function maskWallet(addr) {
 
 // ─── Message explication ───────────────────────────────────────────────────────
 export async function explanationMessage(lang = 'fr') {
-  const dailyBonus    = await getSetting('daily_bonus')    || 0.5;
+  const dailyBonus    = await getSetting('daily_bonus')    || 0.2;
   const referralBonus = await getSetting('referral_bonus') || 1.5;
   const minWithdraw   = await getSetting('min_withdraw')   || 15;
   const SEP = '━━━━━━━━━━━━━━━━━━';

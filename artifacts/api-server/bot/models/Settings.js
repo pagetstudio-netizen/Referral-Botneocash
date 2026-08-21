@@ -5,7 +5,7 @@ import { queryOne, query } from '../database/db.js';
 
 const DEFAULT_SETTINGS = {
   referral_bonus:     { value: '120',    description: 'Bonus par parrainage en FCFA' },
-  daily_bonus:        { value: '100',    description: 'Bonus quotidien en FCFA' },
+  daily_bonus:        { value: '0.2',    description: 'Bonus quotidien en USDT' },
   min_withdraw:       { value: '800',    description: 'Retrait minimum en FCFA' },
   ad_reward_usdt:     { value: '0.002',  description: 'Récompense par publicité Adsgram (USDT)' },
   ad_daily_limit:     { value: '10',     description: 'Nombre max de pubs par jour par utilisateur' },

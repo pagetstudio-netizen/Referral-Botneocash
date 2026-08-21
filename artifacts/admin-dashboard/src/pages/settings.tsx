@@ -112,13 +112,14 @@ export default function Settings() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Bonus quotidien (FCFA)
+                Bonus quotidien (USDT)
               </label>
               <input
                 type="number"
                 value={form.dailyBonus ?? ""}
                 onChange={(e) => setForm(f => ({ ...f, dailyBonus: e.target.value }))}
                 min="0"
+                step="0.001"
                 className={inputClass}
               />
             </div>

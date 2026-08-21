@@ -483,7 +483,7 @@ router.get('/admin/settings', authMiddleware, async (req, res) => {
     ]);
     res.json({
       referralBonus: Number(referralBonus) || 120,
-      dailyBonus: Number(dailyBonus) || 100,
+      dailyBonus: Number(dailyBonus) || 0.2,
       minWithdraw: Number(minWithdraw) || 800,
       requiredChannel: requiredChannel || '',
       requiredGroup: requiredGroup || '',
