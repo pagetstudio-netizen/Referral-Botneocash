@@ -464,7 +464,8 @@ router.post('/admin/withdrawals/:id/reject', authMiddleware, async (req, res) =>
 router.get('/admin/settings', authMiddleware, async (req, res) => {
   try {
     const [referralBonus, dailyBonus, minWithdraw, requiredChannel, requiredGroup,
-           supportLink, supportMessage, maintenanceMode, botName, withdrawalChannel, adminGroupId] = await Promise.all([
+           supportLink, supportMessage, maintenanceMode, botName, withdrawalChannel, adminGroupId,
+           adRewardUsdt, adDailyLimit, adCooldownMin] = await Promise.all([
       getSetting('referral_bonus'),
       getSetting('daily_bonus'),
       getSetting('min_withdraw'),
@@ -476,6 +477,9 @@ router.get('/admin/settings', authMiddleware, async (req, res) => {
       getSetting('bot_name'),
       getSetting('withdrawal_channel'),
       getSetting('admin_group_id'),
+      getSetting('ad_reward_usdt'),
+      getSetting('ad_daily_limit'),
+      getSetting('ad_cooldown_min'),
     ]);
     res.json({
       referralBonus: Number(referralBonus) || 120,
@@ -489,6 +493,9 @@ router.get('/admin/settings', authMiddleware, async (req, res) => {
       botName: botName || 'Moon Crypto',
       withdrawalChannel: withdrawalChannel || '',
       adminGroupId: adminGroupId || '',
+      adRewardUsdt: Number(adRewardUsdt) || 0.002,
+      adDailyLimit: Number(adDailyLimit) || 10,
+      adCooldownMin: Number(adCooldownMin) || 5,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -511,6 +518,9 @@ router.put('/admin/settings', authMiddleware, async (req, res) => {
       botName: 'bot_name',
       withdrawalChannel: 'withdrawal_channel',
       adminGroupId: 'admin_group_id',
+      adRewardUsdt: 'ad_reward_usdt',
+      adDailyLimit: 'ad_daily_limit',
+      adCooldownMin: 'ad_cooldown_min',
     };
     for (const [key, dbKey] of Object.entries(mapping)) {
       if (updates[key] !== undefined) {

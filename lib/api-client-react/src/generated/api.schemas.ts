@@ -161,6 +161,9 @@ export interface BotSettings {
   botName: string;
   withdrawalChannel: string;
   adminGroupId: string;
+  adRewardUsdt: number;
+  adDailyLimit: number;
+  adCooldownMin: number;
 }
 
 export interface BotSettingsInput {
@@ -175,6 +178,9 @@ export interface BotSettingsInput {
   botName?: string;
   withdrawalChannel?: string;
   adminGroupId?: string;
+  adRewardUsdt?: number;
+  adDailyLimit?: number;
+  adCooldownMin?: number;
 }
 
 export interface BroadcastInput {

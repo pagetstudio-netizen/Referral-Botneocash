@@ -22,6 +22,9 @@ export default function Settings() {
         botName: data.botName || "",
         withdrawalChannel: data.withdrawalChannel || "",
         adminGroupId: data.adminGroupId || "",
+        adRewardUsdt: data.adRewardUsdt ?? 0.002,
+        adDailyLimit: data.adDailyLimit ?? 10,
+        adCooldownMin: data.adCooldownMin ?? 5,
       });
     }
   }, [data]);
@@ -131,6 +134,67 @@ export default function Settings() {
                 className={inputClass}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Adsgram — publicités */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            📺 Publicités Adsgram
+          </h3>
+          <p className="text-xs text-gray-400 mb-4">
+            Récompenses versées aux utilisateurs qui regardent des publicités. La valeur par défaut est <strong>0.002 USDT</strong>.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Récompense par pub (USDT)
+              </label>
+              <input
+                type="number"
+                value={form.adRewardUsdt ?? 0.002}
+                onChange={(e) => setForm(f => ({ ...f, adRewardUsdt: e.target.value }))}
+                min="0"
+                step="0.001"
+                className={inputClass}
+                placeholder="0.002"
+              />
+              <p className="text-xs text-gray-400 mt-1">Défaut : 0.002 USDT</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max pubs par jour
+              </label>
+              <input
+                type="number"
+                value={form.adDailyLimit ?? 10}
+                onChange={(e) => setForm(f => ({ ...f, adDailyLimit: e.target.value }))}
+                min="1"
+                max="100"
+                className={inputClass}
+                placeholder="10"
+              />
+              <p className="text-xs text-gray-400 mt-1">Défaut : 10 pubs/jour</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Délai entre pubs (minutes)
+              </label>
+              <input
+                type="number"
+                value={form.adCooldownMin ?? 5}
+                onChange={(e) => setForm(f => ({ ...f, adCooldownMin: e.target.value }))}
+                min="1"
+                max="60"
+                className={inputClass}
+                placeholder="5"
+              />
+              <p className="text-xs text-gray-400 mt-1">Défaut : 5 min</p>
+            </div>
+          </div>
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
+            💡 Gains max par utilisateur par jour = <strong>Récompense × Max pubs</strong>
+            {" "}(ex: {Number(form.adRewardUsdt || 0.002).toFixed(3)} × {form.adDailyLimit || 10} = <strong>{(Number(form.adRewardUsdt || 0.002) * Number(form.adDailyLimit || 10)).toFixed(3)} USDT/jour</strong>)
           </div>
         </div>
 

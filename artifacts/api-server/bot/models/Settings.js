@@ -7,6 +7,9 @@ const DEFAULT_SETTINGS = {
   referral_bonus:     { value: '120',    description: 'Bonus par parrainage en FCFA' },
   daily_bonus:        { value: '100',    description: 'Bonus quotidien en FCFA' },
   min_withdraw:       { value: '800',    description: 'Retrait minimum en FCFA' },
+  ad_reward_usdt:     { value: '0.002',  description: 'Récompense par publicité Adsgram (USDT)' },
+  ad_daily_limit:     { value: '10',     description: 'Nombre max de pubs par jour par utilisateur' },
+  ad_cooldown_min:    { value: '5',      description: 'Délai minimum entre deux pubs (minutes)' },
   required_channel:   { value: '',       description: 'ID ou username du canal obligatoire' },
   required_group:     { value: '',       description: 'ID ou username du groupe obligatoire' },
   required_site:      { value: '',       description: 'URL du site obligatoire' },
@@ -34,7 +37,7 @@ const SETTINGS_TTL = 60_000;
 
 function _processRaw(key, raw) {
   if (raw === null) return null;
-  if (['referral_bonus', 'daily_bonus', 'min_withdraw'].includes(key)) return Number(raw);
+  if (['referral_bonus', 'daily_bonus', 'min_withdraw', 'ad_reward_usdt', 'ad_daily_limit', 'ad_cooldown_min'].includes(key)) return Number(raw);
   if (key === 'maintenance_mode') return raw === 'true' || raw === true;
   return raw;
 }

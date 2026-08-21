@@ -6,11 +6,26 @@ import { Markup } from 'telegraf';
 import { getLang } from '../utils/i18n.js';
 import logger from '../utils/logger.js';
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const AD_REWARD_USDT  = 0.002;       // Récompense par pub
-const AD_COOLDOWN_MS  = 5 * 60_000;  // 5 min entre chaque pub
-const AD_DAILY_LIMIT  = 10;          // Max pubs par jour
-const AD_CLAIM_WINDOW = 15 * 60_000; // 15 min pour cliquer "J'ai regardé"
+// ─── Constantes (valeurs par défaut — configurables depuis l'admin) ───────────
+const AD_REWARD_USDT_DEFAULT = 0.002; // Récompense par pub (défaut)
+const AD_COOLDOWN_MIN_DEFAULT = 5;    // Délai entre pubs en minutes (défaut)
+const AD_DAILY_LIMIT_DEFAULT  = 10;   // Max pubs par jour (défaut)
+const AD_CLAIM_WINDOW = 15 * 60_000;  // 15 min pour cliquer "J'ai regardé" (fixe)
+
+// Lire les paramètres configurés par l'admin (cache 60s via Settings)
+async function getAdConfig() {
+  const { getSetting } = await import('../models/Settings.js');
+  const [reward, limit, cooldown] = await Promise.all([
+    getSetting('ad_reward_usdt'),
+    getSetting('ad_daily_limit'),
+    getSetting('ad_cooldown_min'),
+  ]);
+  return {
+    rewardUsdt:    Number(reward)   || AD_REWARD_USDT_DEFAULT,
+    dailyLimit:    Number(limit)    || AD_DAILY_LIMIT_DEFAULT,
+    cooldownMs:    (Number(cooldown) || AD_COOLDOWN_MIN_DEFAULT) * 60_000,
+  };
+}
 
 // ─── État anti-abus par utilisateur (en mémoire, reset quotidien) ─────────────
 // userId → { adShownAt, lastClaimedAt, dailyCount, dayDate }
@@ -61,22 +76,23 @@ export async function handleWatchAds(ctx) {
     );
   }
 
-  // Vérifications anti-abus
+  // Lire la config admin (reward, limite, cooldown)
+  const cfg   = await getAdConfig();
   const state = getAdState(userId);
   const now   = Date.now();
 
-  if (state.dailyCount >= AD_DAILY_LIMIT) {
+  if (state.dailyCount >= cfg.dailyLimit) {
     return ctx.reply(
-      `🚫 *Limite quotidienne atteinte !*\n\nTu as déjà regardé *${AD_DAILY_LIMIT} publicités* aujourd'hui.\n🌙 Reviens demain pour en gagner davantage !`,
+      `🚫 *Limite quotidienne atteinte !*\n\nTu as déjà regardé *${cfg.dailyLimit} publicités* aujourd'hui.\n🌙 Reviens demain pour en gagner davantage !`,
       { parse_mode: 'Markdown' },
     );
   }
 
-  const cooldownRemaining = AD_COOLDOWN_MS - (now - state.lastClaimedAt);
+  const cooldownRemaining = cfg.cooldownMs - (now - state.lastClaimedAt);
   if (state.lastClaimedAt > 0 && cooldownRemaining > 0) {
     const mins = Math.ceil(cooldownRemaining / 60_000);
     return ctx.reply(
-      `⏳ *Patiente encore ${mins} minute(s)* avant la prochaine pub.\n\n📊 Pubs vues aujourd'hui : *${state.dailyCount}/${AD_DAILY_LIMIT}*`,
+      `⏳ *Patiente encore ${mins} minute(s)* avant la prochaine pub.\n\n📊 Pubs vues aujourd'hui : *${state.dailyCount}/${cfg.dailyLimit}*`,
       { parse_mode: 'Markdown' },
     );
   }
@@ -112,7 +128,7 @@ export async function handleWatchAds(ctx) {
   const keyboard = Markup.inlineKeyboard([
     [Markup.button.url(`🔗 ${ad.button_name || 'Voir la pub'}`, ad.click_url)],
     [Markup.button.url(`🎁 ${ad.button_reward_name || 'Réclamer la récompense'}`, ad.reward_url)],
-    [Markup.button.callback('✅ J\'ai regardé — Recevoir +0.002 USDT', claimData)],
+    [Markup.button.callback(`✅ J'ai regardé — Recevoir +${cfg.rewardUsdt} USDT`, claimData)],
   ]);
 
   // Envoyer l'annonce avec protect_content=true (requis par Adsgram)
@@ -147,6 +163,8 @@ export async function handleAdsClaim(ctx) {
     return ctx.answerCbQuery('❌ Ce bouton ne t\'appartient pas.', { show_alert: true }).catch(() => {});
   }
 
+  // Lire la config admin
+  const cfg   = await getAdConfig();
   const state = getAdState(userId);
   const now   = Date.now();
 
@@ -161,8 +179,8 @@ export async function handleAdsClaim(ctx) {
   }
 
   // Limite quotidienne
-  if (state.dailyCount >= AD_DAILY_LIMIT) {
-    return ctx.answerCbQuery(`🚫 Limite de ${AD_DAILY_LIMIT} pubs/jour atteinte.`, { show_alert: true }).catch(() => {});
+  if (state.dailyCount >= cfg.dailyLimit) {
+    return ctx.answerCbQuery(`🚫 Limite de ${cfg.dailyLimit} pubs/jour atteinte.`, { show_alert: true }).catch(() => {});
   }
 
   // Marquer comme réclamé IMMÉDIATEMENT (anti double-claim)
@@ -179,35 +197,36 @@ export async function handleAdsClaim(ctx) {
     if (!user) throw new Error('user not found');
 
     const balanceBefore    = user.balance;
-    user.balance           = parseFloat((user.balance       + AD_REWARD_USDT).toFixed(6));
-    user.bonusEarnings     = parseFloat((user.bonusEarnings + AD_REWARD_USDT).toFixed(6));
+    user.balance           = parseFloat((user.balance       + cfg.rewardUsdt).toFixed(6));
+    user.bonusEarnings     = parseFloat((user.bonusEarnings + cfg.rewardUsdt).toFixed(6));
     await user.save();
 
     await Transaction.create({
       userId: user.id,
       type: 'ad_reward',
-      amount: AD_REWARD_USDT,
+      amount: cfg.rewardUsdt,
       balanceBefore,
       balanceAfter: user.balance,
-      description: 'Récompense publicité Adsgram',
+      description: `Récompense publicité Adsgram (${cfg.rewardUsdt} USDT)`,
     });
 
     // Désactiver les boutons (empêche tout re-claim)
     await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
 
-    const remainingToday = AD_DAILY_LIMIT - (state.dailyCount + 1);
+    const remainingToday = cfg.dailyLimit - (state.dailyCount + 1);
+    const cooldownMins   = Math.round(cfg.cooldownMs / 60_000);
 
     await ctx.reply(
-      `✅ *+0.002 USDT* ajouté à ton solde !\n\n` +
+      `✅ *+${cfg.rewardUsdt} USDT* ajouté à ton solde !\n\n` +
       `💰 *Solde :* ${user.balance.toFixed(4)} USDT\n` +
-      `📺 *Pubs restantes aujourd'hui :* ${remainingToday}/${AD_DAILY_LIMIT}\n\n` +
+      `📺 *Pubs restantes aujourd'hui :* ${remainingToday}/${cfg.dailyLimit}\n\n` +
       (remainingToday > 0
-        ? `⏳ Prochaine pub disponible dans *5 min*.`
+        ? `⏳ Prochaine pub disponible dans *${cooldownMins} min*.`
         : `🌙 Tu as atteint la limite du jour. Reviens demain !`),
       { parse_mode: 'Markdown' },
     );
 
-    logger.info('Ad reward credited', { userId, amount: AD_REWARD_USDT, newBalance: user.balance, dailyCount: state.dailyCount + 1 });
+    logger.info('Ad reward credited', { userId, amount: cfg.rewardUsdt, newBalance: user.balance, dailyCount: state.dailyCount + 1 });
 
   } catch (err) {
     // Rollback du state en cas d'erreur DB
