@@ -29,10 +29,9 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.3",
-    "@types/node": "catalog:",
+    "@types/node": "^20.0.0",
     "@types/pg": "^8.18.0",
-    "@workspace/api-zod": "workspace:*",
     "esbuild": "^0.27.3",
-    "tsx": "catalog:"
+    "tsx": "^4.19.2"
   }
 }

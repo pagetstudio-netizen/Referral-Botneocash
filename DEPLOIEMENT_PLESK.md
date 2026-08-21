@@ -3,13 +3,13 @@
 ## Architecture en production
 
 Un seul processus Node.js gère tout :
-- 🤖 Le bot Telegram (long-polling)
-- 🔌 L'API Express (`/api/*`)
-- 🖥️ Le dashboard admin (fichiers statiques depuis `artifacts/admin-dashboard/dist/public/`)
+- 🤖 Bot Telegram (long-polling)
+- 🔌 API Express (`/api/*`)
+- 🖥️ Dashboard admin (statique depuis `artifacts/admin-dashboard/dist/public/`)
 
 ---
 
-## Étape 1 — GitHub : pousser le code
+## Étape 1 — Pousser sur GitHub
 
 ```bash
 git add .
@@ -19,21 +19,20 @@ git push origin main
 
 ---
 
-## Étape 2 — Plesk : Configurer l'application Node.js
+## Étape 2 — Plesk : Configuration Node.js
 
-Va sur **zoksilll.online → Node.js** dans Plesk.
+Dans **zoksilll.online → Node.js** :
 
-### ✅ Paramètres Node.js — exactement ces valeurs
-
-| Champ Plesk | Valeur à saisir |
+| Champ | Valeur |
 |---|---|
 | **Node.js version** | `20` |
 | **Application mode** | `production` |
-| **Application root** | `/` *(racine du dépôt, laisser vide ou `/`)* |
-| **Document root** | `public` ← **dossier `public/` à la racine du dépôt** |
-| **Application startup file** | `artifacts/api-server/bot/index.js` |
+| **Application root** | `artifacts/api-server` |
+| **Document root** | `public` |
+| **Application startup file** | `bot/index.js` |
 
-> Le dossier `public/` est déjà créé dans le dépôt. Plesk/Passenger l'utilise comme point d'entrée statique, mais Node.js intercepte toutes les requêtes.
+> ⚠️ Application root = `artifacts/api-server` (PAS la racine du dépôt).
+> Plesk installera les dépendances npm dans ce dossier — son `package.json` est compatible npm.
 
 ---
 
@@ -49,84 +48,76 @@ Dans **Node.js → Environment Variables** :
 | `SUPABASE_DB_URL` | *(URL PostgreSQL Supabase)* |
 | `ADMIN_EMAIL` | *(email dashboard)* |
 | `ADMIN_PASSWORD` | *(mot de passe dashboard)* |
-| `ADMIN_JWT_SECRET` | *(chaîne aléatoire longue, ex: 64 caractères)* |
-| `ADSGRAM_BLOCK_ID` | *(chiffres seulement, sans `bot-`)* |
-| `ADSGRAM_TOKEN` | *(token depuis profil Adsgram)* |
-
-> **`PORT`** : ne pas le définir — Plesk/Passenger le fixe automatiquement.
+| `ADMIN_JWT_SECRET` | *(chaîne aléatoire longue)* |
+| `ADSGRAM_BLOCK_ID` | `43911` |
+| `ADSGRAM_TOKEN` | *(token Adsgram)* |
 
 ---
 
-## Étape 4 — Plesk : Script de déploiement
+## Étape 4 — Plesk : Script de déploiement Git
 
-Dans **Git → Deployment script** (ou custom npm script) :
+Dans **Git → Deployment script** :
 
 ```
 bash deploy.sh
 ```
 
-Ce script fait automatiquement :
-1. Installe `pnpm` si absent
-2. Installe toutes les dépendances
-3. Build le dashboard admin → `artifacts/admin-dashboard/dist/public/`
+Ce script (`deploy.sh` à la racine du dépôt) :
+1. Installe pnpm si absent
+2. Lance `pnpm install` sur tout le monorepo
+3. Build le dashboard → `artifacts/admin-dashboard/dist/public/`
 
 ---
 
-## Étape 5 — Plesk : Connecter GitHub
+## Étape 5 — Connecter GitHub
 
-1. **Hébergement web → Git → Ajouter un dépôt**
-2. URL : `https://github.com/TON_COMPTE/TON_REPO.git`
-3. Branche : `main`
+**Hébergement web → Git → Ajouter un dépôt**
+- URL : `https://github.com/TON_COMPTE/TON_REPO.git`
+- Branche : `main`
 
 ---
 
-## Étape 6 — Déploiement (et toutes les mises à jour futures)
+## Étape 6 — Déployer (et toutes les mises à jour futures)
 
 ```
-1. Plesk → Git → Pull
-2. Plesk → Git → Deploy Now   ← exécute deploy.sh (installe + build)
-3. Plesk → Node.js → Restart  ← redémarre le bot
+① Git → Pull
+② Git → Deploy Now    ← exécute deploy.sh
+③ Node.js → Restart   ← démarre le bot
 ```
-
-✅ Le bot tourne sur `http://zoksilll.online`
 
 ---
 
-## Étape 7 — Configurer Adsgram Reward URL
+## Étape 7 — Adsgram Reward URL
 
-Dans le dashboard Adsgram (partner.adsgram.ai), champ **Reward URL** :
+Champ **Reward URL** dans partner.adsgram.ai :
 
 ```
 http://zoksilll.online/api/adsgram/reward?userid=[userId]
 ```
 
-Adsgram remplace `[userId]` par l'ID Telegram de l'utilisateur et appelle cette URL quand la pub est regardée. Le bot crédite automatiquement le solde et notifie l'utilisateur sur Telegram.
-
 ---
 
-## Vérifications après déploiement
+## Vérifications
 
 | Test | Résultat attendu |
 |---|---|
 | `http://zoksilll.online/api/health` | `{"status":"ok"}` |
 | `http://zoksilll.online/` | Page de connexion dashboard |
 | `/start` dans Telegram | Bot répond |
-| `http://zoksilll.online/api/adsgram/reward?userid=123` | `{"success":true,...}` |
 
 ---
 
-## Structure des fichiers (après deploy.sh)
+## Structure après déploiement
 
 ```
-/ ← Application root Plesk
-├── public/                           ← Document root Plesk (dossier vide requis)
-├── deploy.sh                         ← Script Plesk
+/ (racine dépôt Git)
+├── deploy.sh                          ← script Git deployment
+├── public/                            ← Document root Plesk (placeholder)
 ├── artifacts/
-│   ├── api-server/
-│   │   └── bot/index.js             ← Application startup file
+│   ├── api-server/                    ← Application root Plesk
+│   │   ├── bot/index.js              ← Application startup file
+│   │   └── node_modules/             ← installé par npm (Plesk) + pnpm
 │   └── admin-dashboard/
-│       └── dist/public/             ← Généré par deploy.sh
-│           ├── index.html
-│           └── assets/
+│       └── dist/public/              ← généré par deploy.sh
 └── ...
 ```
