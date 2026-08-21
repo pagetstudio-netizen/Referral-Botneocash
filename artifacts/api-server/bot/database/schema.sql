@@ -76,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
 CREATE TABLE IF NOT EXISTS transactions (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('referral_bonus', 'daily_bonus', 'withdrawal', 'admin_credit', 'admin_debit')),
+  type TEXT NOT NULL CHECK (type IN ('referral_bonus', 'daily_bonus', 'withdrawal', 'admin_credit', 'admin_debit', 'ad_reward')),
   amount INTEGER NOT NULL,
   balance_before INTEGER NOT NULL DEFAULT 0,
   balance_after INTEGER NOT NULL DEFAULT 0,
@@ -219,3 +219,20 @@ INSERT INTO settings (key, value, description) VALUES
   ('referral_bonus', '1.5',  'Bonus de parrainage en USDT'),
   ('min_withdraw',   '15',   'Retrait minimum en USDT')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = NOW();
+
+-- ─── Migration : ajout du type ad_reward au CHECK de transactions ─────────────
+-- (nécessaire pour les bases existantes où le CHECK a été créé sans ad_reward)
+DO $$
+BEGIN
+  -- Supprimer l'ancienne contrainte (nommée automatiquement par PostgreSQL)
+  BEGIN
+    ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_type_check;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  -- Recréer avec ad_reward inclus
+  BEGIN
+    ALTER TABLE transactions ADD CONSTRAINT transactions_type_check
+      CHECK (type IN ('referral_bonus', 'daily_bonus', 'withdrawal', 'admin_credit', 'admin_debit', 'ad_reward'));
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+END $$;

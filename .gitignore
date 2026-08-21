@@ -2,6 +2,8 @@
 
 # compiled output
 dist
+!artifacts/admin-dashboard/dist
+!artifacts/admin-dashboard/dist/**
 tmp
 out-tsc
 *.tsbuildinfo
