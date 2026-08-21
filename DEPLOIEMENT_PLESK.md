@@ -29,10 +29,10 @@ Dans **zoksilll.online → Node.js** :
 | **Application mode** | `production` |
 | **Application root** | `artifacts/api-server` |
 | **Document root** | `public` |
-| **Application startup file** | `bot/index.js` |
+| **Application startup file** | `bot/loader.cjs` |
 
-> ⚠️ Application root = `artifacts/api-server` (PAS la racine du dépôt).
-> Plesk installera les dépendances npm dans ce dossier — son `package.json` est compatible npm.
+> ⚠️ **Startup file = `bot/loader.cjs`** (pas `bot/index.js`).
+> Ce fichier CJS est compatible avec toutes les versions de Passenger/Plesk.
 
 ---
 
@@ -62,10 +62,8 @@ Dans **Git → Deployment script** :
 bash deploy.sh
 ```
 
-Ce script (`deploy.sh` à la racine du dépôt) :
-1. Installe pnpm si absent
-2. Lance `pnpm install` sur tout le monorepo
-3. Build le dashboard → `artifacts/admin-dashboard/dist/public/`
+`deploy.sh` installe les dépendances npm dans `artifacts/api-server/`.
+Le dashboard est déjà buildé et commité dans git — aucun build nécessaire.
 
 ---
 
@@ -81,43 +79,37 @@ Ce script (`deploy.sh` à la racine du dépôt) :
 
 ```
 ① Git → Pull
-② Git → Deploy Now    ← exécute deploy.sh
-③ Node.js → Restart   ← démarre le bot
+② Git → Deploy Now    ← exécute deploy.sh (npm install)
+③ Node.js → Restart   ← démarre le bot via loader.cjs
 ```
 
 ---
 
-## Étape 7 — Adsgram Reward URL
-
-Champ **Reward URL** dans partner.adsgram.ai :
-
-```
-http://zoksilll.online/api/adsgram/reward?userid=[userId]
-```
-
----
-
-## Vérifications
+## Étape 7 — Vérifications
 
 | Test | Résultat attendu |
 |---|---|
-| `http://zoksilll.online/api/health` | `{"status":"ok"}` |
+| `http://zoksilll.online/api/health` | `{"status":"ok","dbConnected":true,"botRunning":true}` |
 | `http://zoksilll.online/` | Page de connexion dashboard |
 | `/start` dans Telegram | Bot répond |
 
 ---
 
-## Structure après déploiement
+## En cas de problème : lire le log d'erreur
+
+Si l'app plante au démarrage, un fichier `artifacts/api-server/startup-error.log`
+est créé. Lire son contenu via SSH Plesk :
+
+```bash
+cat /var/www/vhosts/zoksilll.online/httpdocs/artifacts/api-server/startup-error.log
+```
+
+---
+
+## Adsgram Reward URL
+
+Champ **Reward URL** dans partner.adsgram.ai :
 
 ```
-/ (racine dépôt Git)
-├── deploy.sh                          ← script Git deployment
-├── public/                            ← Document root Plesk (placeholder)
-├── artifacts/
-│   ├── api-server/                    ← Application root Plesk
-│   │   ├── bot/index.js              ← Application startup file
-│   │   └── node_modules/             ← installé par npm (Plesk) + pnpm
-│   └── admin-dashboard/
-│       └── dist/public/              ← généré par deploy.sh
-└── ...
+http://zoksilll.online/api/adsgram/reward?userid=[userId]
 ```

@@ -68,8 +68,17 @@ if (existsSync(ADMIN_DIST)) {
   logger.info('📊 Tableau de bord admin servi depuis /');
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(`🌐 Serveur HTTP démarré sur le port ${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    logger.error(`❌ Port ${PORT} déjà utilisé. Arrêt du processus.`);
+  } else {
+    logger.error(`❌ Erreur serveur HTTP : ${err.message}`);
+  }
+  process.exit(1);
 });
 
 // ─── Keep-alive : ping externe toutes les 3 minutes ──────────────────────────
