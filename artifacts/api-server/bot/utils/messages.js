@@ -7,7 +7,9 @@ import { t } from './i18n.js';
 
 export function escapeMarkdown(text) {
   if (!text) return '';
-  return String(text).replace(/[*_`\[\]]/g, '\\$&');
+  // Telegram Markdown v1 ne supporte PAS l'échappement backslash (\*)
+  // → on supprime les caractères spéciaux pour éviter les erreurs 400
+  return String(text).replace(/[*_`\[\]\\]/g, '');
 }
 
 // ─── Formatage montant USDT ────────────────────────────────────────────────────
