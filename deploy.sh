@@ -17,7 +17,7 @@ echo "✅ [deploy] pnpm version : $(pnpm --version)"
 
 # ─── 2. Installer les dépendances ────────────────────────────────────────────
 echo "📦 [deploy] Installation des dépendances..."
-pnpm install --frozen-lockfile
+pnpm install
 
 # ─── 3. Build du dashboard admin ─────────────────────────────────────────────
 echo "🏗️  [deploy] Build du dashboard admin..."
