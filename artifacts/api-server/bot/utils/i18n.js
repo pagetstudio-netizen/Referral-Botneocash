@@ -44,49 +44,53 @@ const translations = {
 
   // ── Message de bienvenue ─────────────────────────────────────────────────────
   welcome: {
-    fr: (name, ref, daily, min) =>
+    fr: (name, ref, daily, min, ad) =>
       `👋 *Bonjour ${name}, bienvenue chez Moon Crypto !* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Gagne de l'argent réel* en partageant simplement ton lien de parrainage avec tes amis et ta famille !\n\n` +
       `🔥 *Comment gagner :*\n` +
       `👥 *+${ref} USDT* par ami invité via ton lien\n` +
-      `🎁 *+${daily} USDT* bonus gratuit chaque jour\n\n` +
+      `🎁 *+${daily} USDT* bonus gratuit chaque jour\n` +
+      `📺 *+${ad} USDT* en regardant des vidéos pour gagner de l'argent\n\n` +
       `🪙 *Retraits disponibles en crypto :*\n` +
       `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
       `💰 Retrait à partir de *${min} USDT* seulement\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *C'est gratuit, sans dépôt — commence maintenant !*`,
-    en: (name, ref, daily, min) =>
+    en: (name, ref, daily, min, ad) =>
       `👋 *Hello ${name}, welcome to Moon Crypto!* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Earn real money* by simply sharing your referral link with friends and family!\n\n` +
       `🔥 *How to earn:*\n` +
       `👥 *+${ref} USDT* per friend invited via your link\n` +
-      `🎁 *+${daily} USDT* free bonus every day\n\n` +
+      `🎁 *+${daily} USDT* free bonus every day\n` +
+      `📺 *+${ad} USDT* by watching videos to earn money\n\n` +
       `🪙 *Crypto withdrawals available:*\n` +
       `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
       `💰 Withdraw from *${min} USDT* only\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *It's free, no deposit required — start now!*`,
-    de: (name, ref, daily, min) =>
+    de: (name, ref, daily, min, ad) =>
       `👋 *Hallo ${name}, willkommen bei Moon Crypto!* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *Verdiene echtes Geld*, indem du deinen Empfehlungslink mit Freunden und Familie teilst!\n\n` +
       `🔥 *Wie du verdienst:*\n` +
       `👥 *+${ref} USDT* pro eingeladenem Freund über deinen Link\n` +
-      `🎁 *+${daily} USDT* kostenloser Bonus jeden Tag\n\n` +
+      `🎁 *+${daily} USDT* kostenloser Bonus jeden Tag\n` +
+      `📺 *+${ad} USDT* durch Videos anschauen und Geld verdienen\n\n` +
       `🪙 *Krypto-Auszahlungen verfügbar:*\n` +
       `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
       `💰 Auszahlung ab *${min} USDT*\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
       `🚀 *Kostenlos, keine Einzahlung — fang jetzt an!*`,
-    zh: (name, ref, daily, min) =>
+    zh: (name, ref, daily, min, ad) =>
       `👋 *你好 ${name}，欢迎来到 Moon Crypto！* 🎉\n\n` +
       `━━━━━━━━━━━━━━━━━━\n` +
       `💸 *赚取真实收入*，只需将您的推荐链接分享给朋友和家人！\n\n` +
       `🔥 *如何赚取：*\n` +
       `👥 每位通过您链接邀请的朋友 *+${ref} USDT*\n` +
-      `🎁 每天免费奖励 *+${daily} USDT*\n\n` +
+      `🎁 每天免费奖励 *+${daily} USDT*\n` +
+      `📺 观看视频赚钱 *+${ad} USDT*\n\n` +
       `🪙 *加密货币提现方式：*\n` +
       `USDT • BNB • BTC • ETH • SOL • TRX • MATIC\n\n` +
       `💰 最低提现 *${min} USDT*\n` +
