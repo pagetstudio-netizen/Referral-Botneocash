@@ -120,6 +120,66 @@ router.post('/admin/login', (req, res) => {
   });
 });
 
+// ─── GET /api/adsgram/reward — Webhook Adsgram (SANS authentification) ────────
+// Adsgram appelle cette URL quand un utilisateur regarde une pub jusqu'au bout.
+// URL à configurer dans Adsgram : http://zoksilll.online/api/adsgram/reward?userid=[userId]
+router.get('/adsgram/reward', async (req, res) => {
+  const telegramId = parseInt(req.query.userid, 10);
+  if (!telegramId || isNaN(telegramId)) {
+    return res.status(400).json({ error: 'Missing or invalid userid' });
+  }
+
+  try {
+    const rewardUsdt = (await getSetting('ad_reward_usdt')) || 0.002;
+
+    const user = await User.findOne({ telegramId });
+    if (!user) {
+      logger.warn('Adsgram reward: user not found', { telegramId });
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const balanceBefore    = user.balance;
+    user.balance           = parseFloat((user.balance       + Number(rewardUsdt)).toFixed(6));
+    user.bonusEarnings     = parseFloat((user.bonusEarnings + Number(rewardUsdt)).toFixed(6));
+    await user.save();
+
+    await Transaction.create({
+      userId: user.telegramId,
+      type: 'ad_reward',
+      amount: Number(rewardUsdt),
+      balanceBefore,
+      balanceAfter: user.balance,
+      description: `Récompense Adsgram (webhook)`,
+    });
+
+    logger.info('Adsgram webhook reward credited', { telegramId, amount: rewardUsdt });
+
+    // ─── Notification Telegram à l'utilisateur ─────────────────────────────────
+    const botToken = process.env.BOT_TOKEN;
+    if (botToken) {
+      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramId,
+          text:
+            `✅ *+${rewardUsdt} USDT* ajouté à ton solde !\n\n` +
+            `💰 *Solde :* ${user.balance.toFixed(4)} USDT\n\n` +
+            `📺 Merci d'avoir regardé la publicité !`,
+          parse_mode: 'Markdown',
+        }),
+      }).catch(() => {}); // non-bloquant
+    }
+
+    // Adsgram attend une réponse 200 rapide
+    res.json({ success: true, credited: rewardUsdt });
+
+  } catch (err) {
+    logger.error('Adsgram reward webhook error', { err: err.message, telegramId });
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // ─── GET /api/admin/stats ──────────────────────────────────────────────────────
 router.get('/admin/stats', authMiddleware, async (req, res) => {
   try {

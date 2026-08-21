@@ -5,7 +5,7 @@
 Un seul processus Node.js gère tout :
 - 🤖 Le bot Telegram (long-polling)
 - 🔌 L'API Express (`/api/*`)
-- 🖥️ Le dashboard admin (fichiers statiques servis depuis `artifacts/admin-dashboard/dist/public/`)
+- 🖥️ Le dashboard admin (fichiers statiques depuis `artifacts/admin-dashboard/dist/public/`)
 
 ---
 
@@ -21,51 +21,52 @@ git push origin main
 
 ## Étape 2 — Plesk : Configurer l'application Node.js
 
-Dans Plesk, va sur **zoksilll.online → Node.js** (dans la section "Hébergement web").
+Va sur **zoksilll.online → Node.js** dans Plesk.
 
-### Paramètres Node.js
+### ✅ Paramètres Node.js — exactement ces valeurs
 
 | Champ Plesk | Valeur à saisir |
 |---|---|
-| **Node.js version** | `20` (ou 20.x la plus récente disponible) |
+| **Node.js version** | `20` |
 | **Application mode** | `production` |
-| **Application root** | `/` *(racine du dépôt Git)* |
+| **Application root** | `/` *(racine du dépôt, laisser vide ou `/`)* |
+| **Document root** | `public` ← **dossier `public/` à la racine du dépôt** |
 | **Application startup file** | `artifacts/api-server/bot/index.js` |
-| **Document root** | `public` *(laisser par défaut, non utilisé)* |
+
+> Le dossier `public/` est déjà créé dans le dépôt. Plesk/Passenger l'utilise comme point d'entrée statique, mais Node.js intercepte toutes les requêtes.
 
 ---
 
 ## Étape 3 — Plesk : Variables d'environnement
 
-Dans **Node.js → Environment Variables**, ajoute ces variables :
+Dans **Node.js → Environment Variables** :
 
 | Variable | Valeur |
 |---|---|
 | `NODE_ENV` | `production` |
 | `APP_URL` | `http://zoksilll.online` |
-| `BOT_TOKEN` | *(ton token BotFather)* |
-| `SUPABASE_DB_URL` | *(ton URL PostgreSQL Supabase)* |
-| `ADMIN_EMAIL` | *(email de connexion au dashboard)* |
+| `BOT_TOKEN` | *(token BotFather)* |
+| `SUPABASE_DB_URL` | *(URL PostgreSQL Supabase)* |
+| `ADMIN_EMAIL` | *(email dashboard)* |
 | `ADMIN_PASSWORD` | *(mot de passe dashboard)* |
 | `ADMIN_JWT_SECRET` | *(chaîne aléatoire longue, ex: 64 caractères)* |
-| `ADSGRAM_BLOCK_ID` | *(ID du bloc Adsgram, chiffres seulement)* |
-| `ADSGRAM_TOKEN` | *(token Adsgram depuis ton profil)* |
+| `ADSGRAM_BLOCK_ID` | *(chiffres seulement, sans `bot-`)* |
+| `ADSGRAM_TOKEN` | *(token depuis profil Adsgram)* |
 
 > **`PORT`** : ne pas le définir — Plesk/Passenger le fixe automatiquement.
 
 ---
 
-## Étape 4 — Plesk : Script de déploiement personnalisé
+## Étape 4 — Plesk : Script de déploiement
 
-Dans **Plesk → Git → Dépôt** (ou dans les paramètres Node.js sous "Custom deployment script") :
+Dans **Git → Deployment script** (ou custom npm script) :
 
-**Deployment script** :
 ```
 bash deploy.sh
 ```
 
-Ce script (fourni à la racine du projet) fait automatiquement :
-1. Installe `pnpm`
+Ce script fait automatiquement :
+1. Installe `pnpm` si absent
 2. Installe toutes les dépendances
 3. Build le dashboard admin → `artifacts/admin-dashboard/dist/public/`
 
@@ -74,63 +75,58 @@ Ce script (fourni à la racine du projet) fait automatiquement :
 ## Étape 5 — Plesk : Connecter GitHub
 
 1. **Hébergement web → Git → Ajouter un dépôt**
-2. URL du dépôt : `https://github.com/TON_COMPTE/TON_REPO.git`
+2. URL : `https://github.com/TON_COMPTE/TON_REPO.git`
 3. Branche : `main`
-4. Cocher **"Déployer automatiquement"** si tu veux que chaque push déclenche le déploiement
 
 ---
 
-## Étape 6 — Premier déploiement
-
-1. Clique **"Pull"** → Plesk récupère le code depuis GitHub
-2. Clique **"Deploy Now"** → exécute `deploy.sh` (installe + build)
-3. Clique **"Restart"** dans la section Node.js → démarre le bot
-
-✅ Le bot est maintenant en ligne sur `http://zoksilll.online`
-
----
-
-## Workflow pour les mises à jour futures
+## Étape 6 — Déploiement (et toutes les mises à jour futures)
 
 ```
-1. Modifier le code localement
-2. git push origin main
-3. Sur Plesk : Pull → Deploy Now → Restart
+1. Plesk → Git → Pull
+2. Plesk → Git → Deploy Now   ← exécute deploy.sh (installe + build)
+3. Plesk → Node.js → Restart  ← redémarre le bot
 ```
+
+✅ Le bot tourne sur `http://zoksilll.online`
 
 ---
 
-## Vérification que tout fonctionne
+## Étape 7 — Configurer Adsgram Reward URL
 
-| Test | URL / Action |
+Dans le dashboard Adsgram (partner.adsgram.ai), champ **Reward URL** :
+
+```
+http://zoksilll.online/api/adsgram/reward?userid=[userId]
+```
+
+Adsgram remplace `[userId]` par l'ID Telegram de l'utilisateur et appelle cette URL quand la pub est regardée. Le bot crédite automatiquement le solde et notifie l'utilisateur sur Telegram.
+
+---
+
+## Vérifications après déploiement
+
+| Test | Résultat attendu |
 |---|---|
-| API en ligne | `http://zoksilll.online/api/health` → doit retourner `{"status":"ok"}` |
-| Dashboard admin | `http://zoksilll.online/` → page de connexion |
-| Bot actif | Envoie `/start` à ton bot sur Telegram |
+| `http://zoksilll.online/api/health` | `{"status":"ok"}` |
+| `http://zoksilll.online/` | Page de connexion dashboard |
+| `/start` dans Telegram | Bot répond |
+| `http://zoksilll.online/api/adsgram/reward?userid=123` | `{"success":true,...}` |
 
 ---
 
-## Structure des fichiers après déploiement
+## Structure des fichiers (après deploy.sh)
 
 ```
-/ (racine du dépôt = Application root Plesk)
-├── deploy.sh                          ← script exécuté par Plesk
+/ ← Application root Plesk
+├── public/                           ← Document root Plesk (dossier vide requis)
+├── deploy.sh                         ← Script Plesk
 ├── artifacts/
 │   ├── api-server/
-│   │   ├── bot/index.js              ← Application startup file
-│   │   └── ...
+│   │   └── bot/index.js             ← Application startup file
 │   └── admin-dashboard/
-│       └── dist/public/              ← créé par deploy.sh (build)
+│       └── dist/public/             ← Généré par deploy.sh
 │           ├── index.html
 │           └── assets/
 └── ...
 ```
-
----
-
-## ⚠️ Points importants
-
-- **Ne jamais committer le dossier `dist/`** — il est généré par `deploy.sh` sur Plesk
-- **Le `PORT` est géré par Plesk/Passenger** — ne pas le fixer manuellement
-- **`APP_URL=http://zoksilll.online`** est essentiel pour que le bot reste actif (keep-alive ping)
-- Si Plesk n'a pas `pnpm`, le script `deploy.sh` l'installe automatiquement via `npm install -g pnpm`
